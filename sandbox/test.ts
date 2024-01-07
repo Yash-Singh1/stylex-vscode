@@ -107,6 +107,17 @@ const pulse = stylex.keyframes({
   '100%': {transform: 'scale(1)', color: 'green'},
 });
 
+const styles = stylex.create({
+  root: {
+    backgroundColor: 'red',
+    padding: '1rem',
+    paddingInlineStart: '2rem',
+  },
+  dynamic: (r, g, b) => ({
+    color: `rgb(${r}, ${g}, ${b})`,
+  }),
+});
+
 const fadeIn = stylex.keyframes({
   '0%': {opacity: 0},
   '100%': {opacity: 1},

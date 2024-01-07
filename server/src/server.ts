@@ -36,6 +36,7 @@ import { Identifier, StringLiteral } from '@swc/wasm-web/wasm-web.js';
 import { evaluate } from './lib/evaluate';
 import StateManager from './lib/state-manager';
 import { handleImports } from './lib/imports-handler';
+import dashify from '@stylexjs/shared/lib/utils/dashify';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -676,8 +677,10 @@ let hasDiagnosticRelatedInformationCapability = false;
 										.join('') || 'unknown')
 								: classLine[0];
 
-						const propertyName =
-							state.callInside === 'create' ||
+						const propertyName = (
+							dashify as unknown as typeof import('@stylexjs/shared/lib/utils/dashify')
+						).default(
+							(state.callInside === 'create' ||
 							state.callInside === 'keyframes'
 								? classLine
 										.reverse()
@@ -689,7 +692,8 @@ let hasDiagnosticRelatedInformationCapability = false;
 													className === 'default'
 												)
 										)
-								: `--${state.parentClass[0] || key}`;
+								: `--${state.parentClass[0] || key}`) || 'unknown'
+						);
 
 						cssLines.push(`${indentation.slice(2)}${parentSelector} {`);
 
