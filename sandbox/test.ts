@@ -18,7 +18,8 @@ export const dracula = createThemee(colors, {
 
 const styles = stylex2.create({
   header: {
-    position: stylex.firstThatWorks('sticky', '-webkit-sticky', 'fixed'),
+    position: stylex.firstThatWorks('sticky', '-webkit-sticky', 'fixed', dracula.secondaryText),
+    color: dracula.primaryText,
   },
   button: {
     color: {

@@ -246,7 +246,6 @@ let hasDiagnosticRelatedInformationCapability = false;
 	// We might want to limit this to color restricted properties to allow further reliability (idk)
 	// @see https://github.com/microsoft/vscode-css-languageservice/blob/main/src/data/webCustomData.ts
 	connection.onDocumentColor((params: DocumentColorParams) => {
-		// console.log(params);
 		const textDocument = documents.get(params.textDocument.uri)!;
 		const text = textDocument.getText();
 
@@ -271,8 +270,6 @@ let hasDiagnosticRelatedInformationCapability = false;
 			return [];
 		}
 
-		console.log(parseResult);
-
 		const colors: ColorInformation[] = [];
 
 		const stateManager = new StateManager();
@@ -283,7 +280,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 			node: StringLiteral | { value: string; span: StringLiteral['span'] }
 		) {
 			const color = getColorFromValue(node.value);
-			console.log('colorval', color);
+
 			if (color === null || typeof color === 'string' || (color.alpha ?? 1) === 0) {
 				return false;
 			}
@@ -347,11 +344,8 @@ let hasDiagnosticRelatedInformationCapability = false;
 				},
 
 				KeyValueProperty(node, state) {
-					console.log(state, inspect(node));
 					if (state && state.callInside != null) {
 						const resultingValue = evaluate(node.value, stateManager);
-
-						console.log('resultingValue', resultingValue);
 
 						if (resultingValue.static && 'value' in resultingValue) {
 							if (typeof resultingValue.value === 'string') {
@@ -440,8 +434,6 @@ let hasDiagnosticRelatedInformationCapability = false;
 	const hoverCache = new Map<string, Required<Hover>[]>();
 
 	connection.onHover((params) => {
-		console.log(params);
-
 		const document = documents.get(params.textDocument.uri)!;
 		const text = document.getText();
 
@@ -586,8 +578,6 @@ let hasDiagnosticRelatedInformationCapability = false;
 				},
 
 				KeyValueProperty(node, state) {
-					console.log(state, inspect(node));
-
 					let key: string | undefined;
 
 					if (
@@ -632,7 +622,6 @@ let hasDiagnosticRelatedInformationCapability = false;
 							return state;
 						}
 
-						console.log('made it here', state, key, node.value.type);
 						const classLine = [
 							...(state.callInside === 'create'
 								? []
@@ -694,7 +683,6 @@ let hasDiagnosticRelatedInformationCapability = false;
 
 						const staticValue = evaluate(node.value, stateManager);
 
-						// TODO: Support identifiers from themes
 						if (staticValue.static) {
 							if ('value' in staticValue) {
 								if (staticValue.value == null) {
@@ -707,19 +695,27 @@ let hasDiagnosticRelatedInformationCapability = false;
 									);
 								} else if (Array.isArray(staticValue.value)) {
 									for (const element of staticValue.value) {
-										if (element.static && 'value' in element) {
-											if (typeof element.value === 'string') {
+										if (element.static) {
+											if ('value' in element) {
+												if (typeof element.value === 'string') {
+													cssLines.push(
+														`${indentation}${propertyName}: ${element.value};`
+													);
+												} else if (element.value == null) {
+													cssLines.push(
+														`${indentation}${propertyName}: initial;`
+													);
+												} else if (
+													typeof element.value === 'number'
+												) {
+													// TODO: Infer units based on property name
+													cssLines.push(
+														`${indentation}${propertyName}: ${element.value};`
+													);
+												}
+											} else if ('id' in element) {
 												cssLines.push(
-													`${indentation}${propertyName}: ${element.value};`
-												);
-											} else if (element.value == null) {
-												cssLines.push(
-													`${indentation}${propertyName}: initial;`
-												);
-											} else if (typeof element.value === 'number') {
-												// TODO: Infer units based on property name
-												cssLines.push(
-													`${indentation}${propertyName}: ${element.value};`
+													`${indentation}${propertyName}: var(--${element.id});`
 												);
 											}
 										}
@@ -729,6 +725,10 @@ let hasDiagnosticRelatedInformationCapability = false;
 										`${indentation}${propertyName}: ${staticValue.value};`
 									);
 								}
+							} else if ('id' in staticValue) {
+								cssLines.push(
+									`${indentation}${propertyName}: var(--${staticValue.id});`
+								);
 							}
 						}
 
@@ -737,8 +737,6 @@ let hasDiagnosticRelatedInformationCapability = false;
 						for (let atIndex = 0; atIndex < atIncluded.length; ++atIndex) {
 							cssLines.push(`${'  '.repeat(--indentSize)}}`);
 						}
-
-						console.log('cssLines', cssLines);
 
 						if (cssLines.length > 2) {
 							hover = {

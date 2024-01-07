@@ -395,6 +395,7 @@ export function evaluate(
 					{
 						type: 'ArrayExpression',
 						span: node.span,
+						// TODO: Reverse spreads too, maybe we should avoid using ArrayExpression shortcut
 						elements: node.arguments.reverse(),
 					},
 					stateManager
@@ -416,19 +417,23 @@ export function evaluate(
 
 			const propertyKey = 'id' in property ? property.id : property.value;
 
-			return {
-				value:
-					'id' in object
-						? `${object.id}.${propertyKey}`
-						: object.value == null
-						? object.value
-						: /* prettier-ignore */ typeof propertyKey === 'string'
+			return 'id' in object
+				? /* prettier-ignore */ {
+						id: `${object.id}.${propertyKey}`,
+						static: true,
+						span: node.span,
+					}
+				: /* prettier-ignore */ {
+						value:
+							object.value == null
+								? object.value
+								: /* prettier-ignore */ typeof propertyKey === 'string'
 						? // @ts-expect-error -- Ignore member expression strict rules
 							object.value[propertyKey]
 						: undefined,
-				static: true,
-				span: node.span,
-			};
+						static: true,
+						span: node.span,
+					};
 		}
 
 		case 'OptionalChainingExpression':
