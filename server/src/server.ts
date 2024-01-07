@@ -766,9 +766,13 @@ let hasDiagnosticRelatedInformationCapability = false;
                         }
                       } else if ("id" in element) {
                         cssLines.push(
-                          `${indentation}${dashifyFn(propertyName)}: var(--${
-                            element.id
-                          });`,
+                          `${indentation}${dashifyFn(propertyName)}: ${
+                            ["animation", "animationName"].includes(
+                              propertyName,
+                            )
+                              ? element.id
+                              : `var(--${element.id})`
+                          };`,
                         );
                       }
                     }
@@ -786,9 +790,11 @@ let hasDiagnosticRelatedInformationCapability = false;
                 }
               } else if ("id" in staticValue) {
                 cssLines.push(
-                  `${indentation}${dashifyFn(propertyName)}: var(--${
-                    staticValue.id
-                  });`,
+                  `${indentation}${dashifyFn(propertyName)}: ${
+                    ["animation", "animationName"].includes(propertyName)
+                      ? staticValue.id
+                      : `var(--${staticValue.id})`
+                  };`,
                 );
               }
             }
