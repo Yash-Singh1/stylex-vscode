@@ -7,7 +7,9 @@ import type {
 	Decorator,
 	DefaultDecl,
 	ExportSpecifier,
+	ExprOrSpread,
 	Expression,
+	Fn,
 	Import,
 	ImportSpecifier,
 	JSXAttrValue,
@@ -128,337 +130,210 @@ type NodeType =
 	| TsExpressionWithTypeArguments
 	| TsEnumMember;
 
-// TODO: Extract all logic into a map for perf and also make it more typesafe (e.g. return type should be a tuple of select keys)
-// Maybe we can also use a generic to get the true argument `node` type (remove all spans and primitives)
-// Type assertions will be useful too maybe
+// We use a megalothic type here to make sure the visitor key map is always correct
+const visitorKeyMap: {
+	[Key in NodeType['type']]: (keyof {
+		[K in keyof Extract<NodeType, { type: Key }> as Required<
+			Extract<NodeType, { type: Key }>
+		>[K] extends NodeType | (NodeType | undefined)[] | (ExprOrSpread | undefined)[] | Fn
+			? K
+			: never]: 0;
+	})[];
+} = {
+	Module: ['body'],
+	Script: ['body'],
+	ArrayExpression: ['elements'],
+	ArrayPattern: ['elements'],
+	ArrowFunctionExpression: ['params', 'body', 'typeParameters', 'returnType'],
+	MethodProperty: ['params', 'body', 'typeParameters', 'returnType'],
+	PrivateName: ['id'],
+	ClassProperty: ['value', 'typeAnnotation', 'key'],
+	PrivateProperty: ['value', 'typeAnnotation', 'key'],
+	Parameter: ['decorators', 'pat'],
+	Constructor: ['key', 'params', 'body'],
+	ClassMethod: ['function', 'key'],
+	PrivateMethod: ['function', 'key'],
+	StaticBlock: ['body'],
+	Decorator: ['expression'],
+	FunctionDeclaration: [
+		'identifier',
+		'body',
+		'params',
+		'typeParameters',
+		'returnType',
+		'decorators',
+	],
+	ClassDeclaration: [
+		'body',
+		'identifier',
+		'superClass',
+		'typeParams',
+		'superTypeParams',
+		'implements',
+	],
+	VariableDeclaration: ['declarations'],
+	VariableDeclarator: ['init', 'id'],
+	Identifier: [],
+	OptionalChainingExpression: ['base'],
+	CallExpression: ['callee', 'arguments', 'typeArguments'],
+	ThisExpression: [],
+	ObjectExpression: ['properties'],
+	SpreadElement: ['arguments'],
+	UnaryExpression: ['argument'],
+	UpdateExpression: ['argument'],
+	BinaryExpression: ['left', 'right'],
+	FunctionExpression: [
+		'identifier',
+		'body',
+		'params',
+		'typeParameters',
+		'returnType',
+		'decorators',
+	],
+	ClassExpression: ['identifier'],
+	AssignmentExpression: ['left', 'right'],
+	MemberExpression: ['object', 'property'],
+	SuperPropExpression: ['obj', 'property'],
+	ConditionalExpression: ['test', 'consequent', 'alternate'],
+	Super: [],
+	Import: [],
+	NewExpression: ['callee', 'arguments', 'typeArguments'],
+	SequenceExpression: ['expressions'],
+	YieldExpression: ['argument'],
+	MetaProperty: [],
+	AwaitExpression: ['argument'],
+	TemplateLiteral: ['quasis'],
+	TaggedTemplateExpression: ['tag', 'template', 'typeParameters'],
+	TemplateElement: [],
+	ParenthesisExpression: ['expression'],
+	JSXMemberExpression: ['object', 'property'],
+	JSXNamespacedName: ['namespace', 'name'],
+	JSXEmptyExpression: [],
+	JSXExpressionContainer: ['expression'],
+	JSXSpreadChild: ['expression'],
+	JSXOpeningElement: ['name', 'attributes', 'typeArguments'],
+	JSXClosingElement: ['name'],
+	JSXAttribute: ['name', 'value'],
+	JSXText: [],
+	JSXElement: ['opening', 'children', 'closing'],
+	JSXFragment: ['opening', 'children', 'closing'],
+	JSXOpeningFragment: [],
+	JSXClosingFragment: [],
+	StringLiteral: [],
+	BooleanLiteral: [],
+	NumericLiteral: [],
+	NullLiteral: [],
+	RegExpLiteral: [],
+	BigIntLiteral: [],
+	ExportDefaultExpression: ['expression'],
+	ExportDeclaration: ['declaration'],
+	ImportDeclaration: ['specifiers', 'source', 'asserts'],
+	ExportAllDeclaration: ['source', 'asserts'],
+	ExportNamedDeclaration: ['specifiers', 'source', 'asserts'],
+	ExportDefaultDeclaration: ['decl'],
+	ImportDefaultSpecifier: ['local'],
+	ImportNamespaceSpecifier: ['local'],
+	ImportSpecifier: ['local', 'imported'],
+	ExportNamespaceSpecifier: ['name'],
+	ExportSpecifier: ['orig', 'exported'],
+	ObjectPattern: ['properties'],
+	AssignmentPattern: ['left', 'right'],
+	RestElement: ['argument'],
+	KeyValuePatternProperty: ['key', 'value'],
+	AssignmentPatternProperty: ['key', 'value'],
+	KeyValueProperty: ['key', 'value'],
+	AssignmentProperty: ['key', 'value'],
+	GetterProperty: ['typeAnnotation', 'body'],
+	SetterProperty: ['param', 'body'],
+	BlockStatement: ['stmts'],
+	ExpressionStatement: ['expression'],
+	EmptyStatement: [],
+	DebuggerStatement: [],
+	WithStatement: ['object', 'body'],
+	ReturnStatement: ['argument'],
+	LabeledStatement: ['label', 'body'],
+	BreakStatement: ['label'],
+	ContinueStatement: ['label'],
+	IfStatement: ['test', 'consequent', 'alternate'],
+	SwitchStatement: ['discriminant', 'cases'],
+	ThrowStatement: ['argument'],
+	TryStatement: ['block', 'handler', 'finalizer'],
+	WhileStatement: ['test', 'body'],
+	DoWhileStatement: ['test', 'body'],
+	ForStatement: ['init', 'test', 'update', 'body'],
+	ForOfStatement: ['left', 'right', 'body'],
+	ForInStatement: ['left', 'right', 'body'],
+	SwitchCase: ['test', 'consequent'],
+	CatchClause: ['param', 'body'],
+	TsTypeAnnotation: ['typeAnnotation'],
+	TsTypeParameterDeclaration: ['parameters'],
+	TsTypeParameter: ['constraint', 'default', 'name'],
+	TsTypeParameterInstantiation: ['params'],
+	TsParameterProperty: ['param', 'decorators'],
+	TsQualifiedName: ['left', 'right'],
+	TsCallSignatureDeclaration: ['params', 'typeAnnotation', 'typeParams'],
+	TsConstructSignatureDeclaration: ['params', 'typeAnnotation', 'typeParams'],
+	TsPropertySignature: ['key', 'init', 'params', 'typeAnnotation', 'typeParams'],
+	TsGetterSignature: ['key', 'typeAnnotation'],
+	TsSetterSignature: ['key', 'param'],
+	TsMethodSignature: ['key', 'params', 'typeAnn', 'typeParams'],
+	TsIndexSignature: ['params', 'typeAnnotation'],
+	TsKeywordType: [],
+	TsThisType: [],
+	TsFunctionType: ['params', 'typeParams', 'typeAnnotation'],
+	TsConstructorType: ['params', 'typeParams', 'typeAnnotation'],
+	TsTypeReference: ['typeName', 'typeParams'],
+	TsTypePredicate: ['paramName', 'typeAnnotation'],
+	TsImportType: ['argument', 'qualifier', 'typeArguments'],
+	TsTypeQuery: ['exprName', 'typeArguments'],
+	TsTypeLiteral: ['members'],
+	TsArrayType: ['elemType'],
+	TsTupleType: ['elemTypes'],
+	TsTupleElement: ['label', 'ty'],
+	TsOptionalType: ['typeAnnotation'],
+	TsRestType: ['typeAnnotation'],
+	TsUnionType: ['types'],
+	TsIntersectionType: ['types'],
+	TsConditionalType: ['checkType', 'extendsType', 'trueType', 'falseType'],
+	TsInferType: ['typeParam'],
+	TsParenthesizedType: ['typeAnnotation'],
+	TsTypeOperator: ['typeAnnotation'],
+	TsIndexedAccessType: ['objectType', 'indexType'],
+	TsMappedType: ['typeParam', 'nameType', 'typeAnnotation'],
+	TsLiteralType: ['literal'],
+	TsInterfaceDeclaration: ['id', 'typeParams', 'extends', 'body'],
+	TsInterfaceBody: ['body'],
+	TsExpressionWithTypeArguments: ['expression', 'typeArguments'],
+	TsTypeAliasDeclaration: ['id', 'typeParams', 'typeAnnotation'],
+	TsEnumDeclaration: ['id', 'members'],
+	TsEnumMember: ['id', 'init'],
+	TsModuleDeclaration: ['id', 'body'],
+	TsModuleBlock: ['body'],
+	TsNamespaceDeclaration: ['id', 'body'],
+	TsImportEqualsDeclaration: ['id', 'moduleRef'],
+	TsExternalModuleReference: ['expression'],
+	TsExportAssignment: ['expression'],
+	TsAsExpression: ['expression', 'typeAnnotation'],
+	TsInstantiation: ['expression', 'typeArguments'],
+	TsTypeAssertion: ['expression', 'typeAnnotation'],
+	TsConstAssertion: ['expression'],
+	TsNonNullExpression: ['expression'],
+	TsNamespaceExportDeclaration: ['id'],
+	ExportDefaultSpecifier: ['exported'],
+	Computed: ['expression'],
+	Invalid: [],
+};
+
 function getVisitorKeys(node: NodeType) {
-	switch (node.type) {
-		case 'Module':
-		case 'Script':
-			return ['body'];
-		case 'ArrayExpression':
-		case 'ArrayPattern':
-			return ['elements'];
-		case 'ArrowFunctionExpression':
-		case 'MethodProperty':
-			return ['params', 'body', 'typeParameters', 'returnType'];
-		case 'PrivateName':
-			return ['id'];
-		case 'ClassProperty':
-		case 'PrivateProperty':
-			return ['value', 'typeAnnotation', 'key'];
-		case 'Parameter':
-			return ['decorators', 'pat'];
-		case 'Constructor':
-			return ['key', 'params', 'body'];
-		case 'ClassMethod':
-		case 'PrivateMethod':
-			return ['function', 'key'];
-		case 'StaticBlock':
-			return ['body'];
-		case 'Decorator':
-			return ['expression'];
-		case 'FunctionDeclaration':
-			return [
-				'identifier',
-				'body',
-				'params',
-				'typeParameters',
-				'returnType',
-				'decorators',
-			];
-		case 'ClassDeclaration':
-			return [
-				'body',
-				'identifier',
-				'superClass',
-				'TypeParams',
-				'superTypeParams',
-				'implements',
-			];
-		case 'VariableDeclaration':
-			return ['declarations'];
-		case 'VariableDeclarator':
-			return ['init', 'id'];
-		case 'Identifier':
-			return [];
-		case 'OptionalChainingExpression':
-			return ['base'];
-		case 'CallExpression':
-			return ['callee', 'arguments', 'typeArguments'];
-		case 'ThisExpression':
-			return [];
-		case 'ObjectExpression':
-			return ['properties'];
-		case 'SpreadElement':
-			return ['spread'];
-		case 'UnaryExpression':
-			return ['argument'];
-		case 'UpdateExpression':
-			return ['argument'];
-		case 'BinaryExpression':
-			return ['left', 'right'];
-		case 'FunctionExpression':
-			return [
-				'identifier',
-				'body',
-				'params',
-				'typeParameters',
-				'returnType',
-				'decorators',
-			];
-		case 'ClassExpression':
-			return ['identifier'];
-		case 'AssignmentExpression':
-			return ['left', 'right'];
-		case 'MemberExpression':
-			return ['object', 'property'];
-		case 'SuperPropExpression':
-			return ['obj', 'property'];
-		case 'ConditionalExpression':
-			return ['test', 'consequent', 'alternate'];
-		case 'Super':
-		case 'Import':
-			return [];
-		case 'NewExpression':
-			return ['callee', 'arguments', 'typeArguments'];
-		case 'SequenceExpression':
-			return ['expressions'];
-		case 'YieldExpression':
-			return ['argument'];
-		case 'MetaProperty':
-			return [];
-		case 'AwaitExpression':
-			return ['argument'];
-		case 'TemplateLiteral':
-			return ['quasis', 'expressions', 'types'];
-		case 'TaggedTemplateExpression':
-			return ['tag', 'template', 'typeParameters'];
-		case 'TemplateElement':
-			return [];
-		case 'ParenthesisExpression':
-			return ['expression'];
-		case 'JSXMemberExpression':
-			return ['object', 'property'];
-		case 'JSXNamespacedName':
-			return ['namespace', 'name'];
-		case 'JSXEmptyExpression':
-			return [];
-		case 'JSXExpressionContainer':
-			return ['expression'];
-		case 'JSXSpreadChild':
-			return ['expression'];
-		case 'JSXOpeningElement':
-			return ['name', 'attributes', 'typeArguments'];
-		case 'JSXClosingElement':
-			return ['name'];
-		case 'JSXAttribute':
-			return ['name', 'value'];
-		case 'JSXText':
-			return [];
-		case 'JSXElement':
-		case 'JSXFragment':
-			return ['opening', 'children', 'closing'];
-		case 'JSXOpeningFragment':
-		case 'JSXClosingFragment':
-			return [];
-		case 'StringLiteral':
-		case 'BooleanLiteral':
-		case 'NumericLiteral':
-		case 'NullLiteral':
-		case 'RegExpLiteral':
-		case 'BigIntLiteral':
-			return [];
-		case 'ExportDefaultExpression':
-			return ['expression'];
-		case 'ExportDeclaration':
-			return ['declaration'];
-		case 'ImportDeclaration':
-			return ['specifiers', 'source', 'asserts'];
-		case 'ExportAllDeclaration':
-			return ['source', 'asserts'];
-		case 'ExportNamedDeclaration':
-			return ['specifiers', 'source', 'asserts'];
-		case 'ExportDefaultDeclaration':
-			return ['decl'];
-		case 'ImportDefaultSpecifier':
-		case 'ImportNamespaceSpecifier':
-			return ['local'];
-		case 'ImportSpecifier':
-			return ['local', 'imported'];
-		case 'ExportNamespaceSpecifier':
-			return ['name'];
-		case 'ExportDefaultSpecifier':
-			return ['exported'];
-		case 'ExportSpecifier':
-			return ['orig', 'exported'];
-		case 'ObjectPattern':
-			return ['properties'];
-		case 'AssignmentPattern':
-			return ['left', 'right'];
-		case 'RestElement':
-			return ['argument'];
-		case 'KeyValuePatternProperty':
-			return ['key', 'value'];
-		case 'AssignmentPatternProperty':
-			return ['key', 'value'];
-		case 'KeyValueProperty':
-		case 'AssignmentProperty':
-			return ['key', 'value'];
-		case 'GetterProperty':
-			return ['typeAnnotation', 'body'];
-		case 'SetterProperty':
-			return ['param', 'body'];
-		case 'Computed':
-			return ['expression'];
-		case 'BlockStatement':
-			return ['stmts'];
-		case 'ExpressionStatement':
-			return ['expression'];
-		case 'EmptyStatement':
-		case 'DebuggerStatement':
-			return [];
-		case 'WithStatement':
-			return ['object', 'body'];
-		case 'ReturnStatement':
-			return ['argument'];
-		case 'LabeledStatement':
-			return ['label', 'body'];
-		case 'BreakStatement':
-			return ['label'];
-		case 'ContinueStatement':
-			return ['label'];
-		case 'IfStatement':
-			return ['test', 'consequent', 'alternate'];
-		case 'SwitchStatement':
-			return ['discriminant', 'cases'];
-		case 'ThrowStatement':
-			return ['argument'];
-		case 'TryStatement':
-			return ['block', 'handler', 'finalizer'];
-		case 'WhileStatement':
-		case 'DoWhileStatement':
-			return ['test', 'body'];
-		case 'ForStatement':
-			return ['init', 'test', 'update', 'body'];
-		case 'ForOfStatement':
-		case 'ForInStatement':
-			return ['left', 'right', 'body'];
-		case 'SwitchCase':
-			return ['test', 'consequent'];
-		case 'CatchClause':
-			return ['param', 'body'];
-		case 'TsTypeAnnotation':
-			return ['typeAnnotation'];
-		case 'TsTypeParameterDeclaration':
-			return ['parameters'];
-		case 'TsTypeParameter':
-			return ['constraint', 'default', 'name'];
-		case 'TsTypeParameterInstantiation':
-			return ['params'];
-		case 'TsParameterProperty':
-			return ['param', 'decorators'];
-		case 'TsQualifiedName':
-			return ['left', 'right'];
-		case 'TsCallSignatureDeclaration':
-		case 'TsConstructSignatureDeclaration':
-			return ['params', 'typeAnnotations', 'typeParams'];
-		case 'TsPropertySignature':
-			return ['key', 'expression', 'params', 'typeAnnotation', 'typeParams'];
-		case 'TsGetterSignature':
-			return ['key', 'typeAnnotation'];
-		case 'TsSetterSignature':
-			return ['key', 'param'];
-		case 'TsMethodSignature':
-			return ['key', 'param', 'typeAnn', 'typeParams'];
-		case 'TsIndexSignature':
-			return ['params', 'typeAnnotation'];
-		case 'TsKeywordType':
-			return [];
-		case 'TsThisType':
-			return [];
-		case 'TsFunctionType':
-			return ['params', 'typeParams', 'typeAnnotation'];
-		case 'TsConstructorType':
-			return ['params', 'typeParams', 'typeAnnotation'];
-		case 'TsTypeReference':
-			return ['typeName', 'typeParams'];
-		case 'TsTypePredicate':
-			return ['param', 'typeAnnotation'];
-		case 'TsImportType':
-			return ['argument', 'qualifier', 'typeArguments'];
-		case 'TsTypeQuery':
-			return ['exprName', 'typeArguments'];
-		case 'TsTypeLiteral':
-			return ['members'];
-		case 'TsArrayType':
-			return ['elemType'];
-		case 'TsTupleType':
-			return ['elemTypes'];
-		case 'TsTupleElement':
-			return ['label', 'ty'];
-		case 'TsOptionalType':
-		case 'TsRestType':
-			return ['typeAnnotation'];
-		case 'TsUnionType':
-		case 'TsIntersectionType':
-			return ['types'];
-		case 'TsConditionalType':
-			return ['checkType', 'extendsType', 'trueType', 'falseType'];
-		case 'TsInferType':
-			return ['typeParam'];
-		case 'TsParenthesizedType':
-			return ['typeAnnotation'];
-		case 'TsTypeOperator':
-			return ['typeAnnotation'];
-		case 'TsIndexedAccessType':
-			return ['objectType', 'indexType'];
-		case 'TsMappedType':
-			return ['typeParam', 'nameType', 'typeAnnotation'];
-		case 'TsLiteralType':
-			return ['literal'];
-		case 'TsInterfaceDeclaration':
-			return ['id', 'typeParams', 'extends', 'body'];
-		case 'TsInterfaceBody':
-			return ['body'];
-		case 'TsExpressionWithTypeArguments':
-			return ['expression', 'typeArguments'];
-		case 'TsTypeAliasDeclaration':
-			return ['id', 'typeParams', 'typeAnnotation'];
-		case 'TsEnumDeclaration':
-			return ['id', 'members'];
-		case 'TsEnumMember':
-			return ['id', 'init'];
-		case 'TsModuleDeclaration':
-			return ['id', 'body'];
-		case 'TsModuleBlock':
-			return ['body'];
-		case 'TsNamespaceDeclaration':
-			return ['id', 'body'];
-		case 'TsImportEqualsDeclaration':
-			return ['id', 'moduleRef'];
-		case 'TsExternalModuleReference':
-			return ['expression'];
-		case 'TsExportAssignment':
-			return ['id'];
-		case 'TsAsExpression':
-		case 'TsInstantiation':
-		case 'TsTypeAssertion':
-			return ['expression', 'typeAnnotation'];
-		case 'TsConstAssertion':
-		case 'TsNonNullExpression':
-			return ['expression'];
-		case 'TsNamespaceExportDeclaration':
-			return ['id'];
-		case 'Invalid':
-			return [];
+	const resultingKeys = visitorKeyMap[node.type];
+	if (!resultingKeys) {
+		throw new Error(`No visitor keys found for node type ${node.type}`);
 	}
+	return resultingKeys;
 }
 
-type ParentType = (NodeType & { parent: NodeType | null }) | null;
-
 export const States = {
-	EXIT: Symbol('FAIL'),
+	EXIT: Symbol('EXIT'),
 } as const;
 
 type OnlyThat<T, U> = T extends U ? T : never;

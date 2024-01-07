@@ -9,7 +9,7 @@ const DARK = '@media (prefers-color-scheme: dark)';
 // Dracula theme
 export const dracula = createThemee(colors, {
   primaryText: {default: 'purple', [DARK]: ['lightpurple', 'deeppink']},
-  secondaryText: {default: 'pink', [DARK]: stylex.firstThatWorks('hotpink', 4, null, 'deeppink')},
+  secondaryText: {default: 'pink', [DARK]: stylex.firstThatWorks( 'pink', 4, null, 'deeppink')},
   accent: 'red',
   background: {default: `#${'4'}44`, [DARK]: stylex.firstThatWorks('black')},
   fontSize: 42,
