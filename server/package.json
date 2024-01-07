@@ -1,31 +1,31 @@
 {
-	"name": "lsp-sample-server",
-	"description": "Example implementation of a language server in node.",
-	"version": "1.0.0",
-	"type": "module",
-	"author": "Microsoft Corporation",
-	"license": "MIT",
-	"engines": {
-		"node": "*"
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/Microsoft/vscode-extension-samples"
-	},
-	"dependencies": {
-		"@babel/preset-typescript": "^7.23.3",
-		"@stylexjs/babel-plugin": "^0.4.1",
-		"@stylexjs/shared": "^0.4.1",
-		"@types/babel__core": "^7.20.5",
-		"color-name": "^2.0.0",
-		"culori": "^3.3.0",
-		"vscode-languageserver": "^9.0.1",
-		"vscode-languageserver-textdocument": "^1.0.11"
-	},
-	"scripts": {},
-	"devDependencies": {
-		"@swc/wasm-web": "^1.3.102",
-		"@types/color-name": "^1.1.3",
-		"@types/culori": "^2.0.4"
-	}
+  "name": "lsp-sample-server",
+  "description": "Example implementation of a language server in node.",
+  "version": "1.0.0",
+  "type": "module",
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "engines": {
+    "node": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Microsoft/vscode-extension-samples"
+  },
+  "dependencies": {
+    "@babel/preset-typescript": "^7.23.3",
+    "@stylexjs/babel-plugin": "^0.4.1",
+    "@stylexjs/shared": "^0.4.1",
+    "@types/babel__core": "^7.20.5",
+    "color-name": "^2.0.0",
+    "culori": "^3.3.0",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11"
+  },
+  "scripts": {},
+  "devDependencies": {
+    "@swc/wasm-web": "^1.3.102",
+    "@types/color-name": "^1.1.3",
+    "@types/culori": "^2.0.4"
+  }
 }

@@ -1,75 +1,79 @@
 {
-	"name": "lsp-sample",
-	"description": "A language server example",
-	"author": "Microsoft Corporation",
-	"license": "MIT",
-	"version": "1.0.0",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/Microsoft/vscode-extension-samples"
-	},
-	"publisher": "vscode-samples",
-	"categories": [],
-	"keywords": [
-		"multi-root ready"
-	],
-	"engines": {
-		"vscode": "^1.75.0"
-	},
-	"activationEvents": [
-		"onLanguage:plaintext",
-		"onLanguage:*",
-		"*"
-	],
-	"main": "./client/out/extension",
-	"contributes": {
-		"configuration": {
-			"type": "object",
-			"title": "Example configuration",
-			"properties": {
-				"languageServerExample.maxNumberOfProblems": {
-					"scope": "resource",
-					"type": "number",
-					"default": 100,
-					"description": "Controls the maximum number of problems produced by the server."
-				},
-				"languageServerExample.trace.server": {
-					"scope": "window",
-					"type": "string",
-					"enum": [
-						"off",
-						"messages",
-						"verbose"
-					],
-					"default": "off",
-					"description": "Traces the communication between VS Code and the language server."
-				}
-			}
-		}
-	},
-	"scripts": {
-		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -p ./client && tsup server/src/server.ts --no-splitting --out-dir server/out",
-		"watch": "concurrently \"tsc -w -p ./client\" \"tsup server/src/server.ts --no-splitting --out-dir server/out --watch --ignore-watch client\"",
-		"lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
-		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-		"test": "sh ./scripts/e2e.sh",
-		"type-check": "tsc --noEmit"
-	},
-	"devDependencies": {
-		"@swc/wasm-web": "^1.3.102",
-		"@types/mocha": "^10.0.6",
-		"@types/node": "^18.14.6",
-		"@typescript-eslint/eslint-plugin": "^6.14.0",
-		"@typescript-eslint/parser": "^6.14.0",
-		"concurrently": "^8.2.2",
-		"eslint": "^8.56.0",
-		"mkdirp": "^3.0.1",
-		"mocha": "^10.2.0",
-		"nodemon": "^3.0.2",
-		"typescript": "^5.3.3"
-	},
-	"dependencies": {
-		"tsup": "^8.0.1"
-	}
+  "name": "lsp-sample",
+  "description": "A language server example",
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Microsoft/vscode-extension-samples"
+  },
+  "publisher": "vscode-samples",
+  "categories": [],
+  "keywords": [
+    "multi-root ready"
+  ],
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact"
+  ],
+  "main": "./client/out/extension",
+  "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "Example configuration",
+      "properties": {
+        "languageServerExample.maxNumberOfProblems": {
+          "scope": "resource",
+          "type": "number",
+          "default": 100,
+          "description": "Controls the maximum number of problems produced by the server."
+        },
+        "languageServerExample.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./client && tsup server/src/server.ts --no-splitting --out-dir server/out",
+    "watch": "concurrently \"tsc -w -p ./client\" \"tsup server/src/server.ts --no-splitting --out-dir server/out --watch --ignore-watch client\"",
+    "lint": "eslint ./client/src ./server/src --ext .ts,.tsx && prettier --check \"**/*.{ts,tsx,js,json,md}\"",
+    "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+    "test": "sh ./scripts/e2e.sh",
+    "type-check": "tsc --noEmit",
+    "code-style": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
+  },
+  "devDependencies": {
+    "@swc/wasm-web": "^1.3.102",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^18.14.6",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "mkdirp": "^3.0.1",
+    "mocha": "^10.2.0",
+    "nodemon": "^3.0.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "prettier": "^3.1.1",
+    "tsup": "^8.0.1"
+  }
 }
