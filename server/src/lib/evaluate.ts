@@ -1,4 +1,5 @@
 import type { ComputedPropName, Expression, Span, TemplateElement } from '@swc/wasm-web';
+import StateManager from './state-manager';
 
 type ResultType =
 	| /* prettier-ignore */ {
@@ -28,7 +29,8 @@ type InnerType =
 	| bigint;
 
 export function evaluate(
-	node: Expression | ComputedPropName | TemplateElement
+	node: Expression | ComputedPropName | TemplateElement,
+	stateManager: StateManager
 ): ResultType {
 	switch (node.type) {
 		case 'StringLiteral':
@@ -55,34 +57,31 @@ export function evaluate(
 				throw new Error('Identifier not implemented');
 			}
 		case 'ArrayExpression': {
-			const result = node.elements.reduce<any[] | false>(
-				(accumalator, exprOrSpread) => {
-					if (!exprOrSpread || !accumalator) return accumalator;
-					if (exprOrSpread.spread) {
-						const result = evaluate(exprOrSpread.expression);
+			const result = node.elements.reduce<any[] | false>((accumalator, exprOrSpread) => {
+				if (!exprOrSpread || !accumalator) return accumalator;
+				if (exprOrSpread.spread) {
+					const result = evaluate(exprOrSpread.expression, stateManager);
 
-						if (!result.static) {
-							accumalator.push(result);
-						}
-
-						accumalator.push(
-							...(<any[]>(
-								(result &&
-								typeof result === 'object' &&
-								(Array.isArray(result) ||
-									(Symbol.iterator in result &&
-										typeof result[Symbol.iterator] === 'function'))
-									? result
-									: [result])
-							))
-						);
-					} else {
-						accumalator.push(evaluate(exprOrSpread.expression));
+					if (!result.static) {
+						accumalator.push(result);
 					}
-					return accumalator;
-				},
-				[]
-			);
+
+					accumalator.push(
+						...(<any[]>(
+							(result &&
+							typeof result === 'object' &&
+							(Array.isArray(result) ||
+								(Symbol.iterator in result &&
+									typeof result[Symbol.iterator] === 'function'))
+								? result
+								: [result])
+						))
+					);
+				} else {
+					accumalator.push(evaluate(exprOrSpread.expression, stateManager));
+				}
+				return accumalator;
+			}, []);
 
 			if (result === false) {
 				return { value: undefined, static: false };
@@ -95,7 +94,7 @@ export function evaluate(
 			const result = node.properties.reduce<Record<string, ResultType>>(
 				(accumalator, property) => {
 					if (property.type === 'SpreadElement') {
-						const result = evaluate(property.arguments);
+						const result = evaluate(property.arguments, stateManager);
 						if (result && typeof result === 'object' && 'value' in result) {
 							if (!result.static) return accumalator;
 							accumalator = Object.assign(accumalator, result.value);
@@ -106,13 +105,13 @@ export function evaluate(
 					switch (property.type) {
 						case 'KeyValueProperty':
 						case 'AssignmentProperty': {
-							const keyVal = evaluate(property.key);
+							const keyVal = evaluate(property.key, stateManager);
 							if (
 								typeof keyVal === 'string' ||
 								typeof keyVal === 'number' ||
 								typeof keyVal === 'symbol'
 							) {
-								accumalator[keyVal] = evaluate(property.value);
+								accumalator[keyVal] = evaluate(property.value, stateManager);
 							}
 							break;
 						}
@@ -124,7 +123,7 @@ export function evaluate(
 						}
 
 						case 'Identifier': {
-							const result = evaluate(property);
+							const result = evaluate(property, stateManager);
 							if (!result.static) return accumalator;
 							accumalator[property.value] = result;
 							break;
@@ -144,14 +143,14 @@ export function evaluate(
 			return { value: undefined, static: false };
 
 		case 'AwaitExpression': {
-			const result = evaluate(node.argument);
+			const result = evaluate(node.argument, stateManager);
 			if (!result.static) return { value: undefined, static: false };
 			return result;
 		}
 
 		case 'BinaryExpression': {
-			const left = evaluate(node.left);
-			const right = evaluate(node.right);
+			const left = evaluate(node.left, stateManager);
+			const right = evaluate(node.right, stateManager);
 
 			if (!left.static || !right.static) return { value: undefined, static: false };
 			let result;
@@ -288,17 +287,15 @@ export function evaluate(
 		case 'TsConstAssertion':
 		case 'TsTypeAssertion':
 		case 'TsInstantiation':
-			return evaluate(node.expression);
+			return evaluate(node.expression, stateManager);
 
 		case 'ParenthesisExpression':
-			return evaluate(node.expression);
+			return evaluate(node.expression, stateManager);
 
 		case 'UnaryExpression': {
-			const result = evaluate(node.argument);
-			if (!result.static || 'id' in result)
-				return { value: undefined, static: false };
-			if (result.value == null)
-				return { value: undefined, static: true, span: node.span };
+			const result = evaluate(node.argument, stateManager);
+			if (!result.static || 'id' in result) return { value: undefined, static: false };
+			if (result.value == null) return { value: undefined, static: true, span: node.span };
 
 			switch (node.operator) {
 				case '+':
@@ -326,19 +323,19 @@ export function evaluate(
 		}
 
 		case 'AssignmentExpression':
-			return evaluate(node.right);
+			return evaluate(node.right, stateManager);
 
 		case 'ThisExpression':
 			return { value: undefined, static: false };
 
 		case 'ConditionalExpression': {
-			const test = evaluate(node.test);
+			const test = evaluate(node.test, stateManager);
 			if (!test.static || 'id' in test) return { value: undefined, static: false };
 
 			if (test.value) {
-				return evaluate(node.consequent);
+				return evaluate(node.consequent, stateManager);
 			} else {
-				return evaluate(node.alternate);
+				return evaluate(node.alternate, stateManager);
 			}
 		}
 
@@ -359,15 +356,13 @@ export function evaluate(
 					: expressionsIndex < node.expressions.length
 			) {
 				if (currentQuasi) {
-					const result = evaluate(node.quasis[quasisIndex]);
-					if (!result.static || 'id' in result)
-						return { value: undefined, static: false };
+					const result = evaluate(node.quasis[quasisIndex], stateManager);
+					if (!result.static || 'id' in result) return { value: undefined, static: false };
 					values.push(result.value);
 					++quasisIndex;
 				} else {
-					const result = evaluate(node.expressions[expressionsIndex]);
-					if (!result.static || 'id' in result)
-						return { value: undefined, static: false };
+					const result = evaluate(node.expressions[expressionsIndex], stateManager);
+					if (!result.static || 'id' in result) return { value: undefined, static: false };
 					values.push(result.value);
 					++expressionsIndex;
 				}
@@ -387,32 +382,36 @@ export function evaluate(
 			return { value: undefined, static: false };
 
 		case 'CallExpression': {
-			// TODO: Make this condition more robust with import tracking
 			if (
-				node.callee.type === 'MemberExpression' &&
-				node.callee.object.type === 'Identifier' &&
-				node.callee.object.value === 'stylex' &&
-				node.callee.property.type === 'Identifier' &&
-				node.callee.property.value === 'firstThatWorks'
+				(node.callee.type === 'MemberExpression' &&
+					node.callee.object.type === 'Identifier' &&
+					stateManager.verifyStylexIdentifier(node.callee.object.value) &&
+					node.callee.property.type === 'Identifier' &&
+					node.callee.property.value === 'firstThatWorks') ||
+				(node.callee.type === 'Identifier' &&
+					stateManager.verifyNamedImport(node.callee.value) === 'firstThatWorks')
 			) {
-				return evaluate({
-					type: 'ArrayExpression',
-					span: node.span,
-					elements: node.arguments.reverse(),
-				});
+				return evaluate(
+					{
+						type: 'ArrayExpression',
+						span: node.span,
+						elements: node.arguments.reverse(),
+					},
+					stateManager
+				);
 			}
 
 			return { value: undefined, static: false };
 		}
 
 		case 'Computed': {
-			return evaluate(node.expression);
+			return evaluate(node.expression, stateManager);
 		}
 
 		case 'MemberExpression': {
-			const object = evaluate(node.object);
+			const object = evaluate(node.object, stateManager);
 			if (!object.static) return { value: undefined, static: false };
-			const property = evaluate(node.property);
+			const property = evaluate(node.property, stateManager);
 			if (!property.static) return { value: undefined, static: false };
 
 			const propertyKey = 'id' in property ? property.id : property.value;
@@ -445,10 +444,10 @@ export function evaluate(
 			return { value: undefined, static: false };
 
 		case 'PrivateName':
-			return evaluate(node.id);
+			return evaluate(node.id, stateManager);
 
 		case 'SequenceExpression':
-			return evaluate(node.expressions[node.expressions.length - 1]);
+			return evaluate(node.expressions[node.expressions.length - 1], stateManager);
 
 		default:
 			throw new Error('Unknown expression');

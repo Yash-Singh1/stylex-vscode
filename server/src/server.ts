@@ -233,7 +233,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 				{
 					label: 'Import StyleX',
 					kind: CompletionItemKind.Reference,
-					insertText: `import * as stylex from ${quote}@stylexjs/stylex${quote};`,
+					insertText: `import stylex from ${quote}@stylexjs/stylex${quote};`,
 				},
 				// TODO: Look into using CSS Language Server for more completion items
 			];
@@ -250,6 +250,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 		const textDocument = documents.get(params.textDocument.uri)!;
 		const text = textDocument.getText();
 
+		// TODO: Language ID configuration
 		// console.log(textDocument.languageId);
 		// if (!jsLanguages.includes(textDocument.languageId)) {
 		// 	return [];
@@ -318,13 +319,14 @@ let hasDiagnosticRelatedInformationCapability = false;
 							node.callee.property.type === 'Identifier' &&
 							(node.callee.property.value === 'create' ||
 								node.callee.property.value === 'createTheme' ||
-								node.callee.property.value === 'defineVars') &&
+								node.callee.property.value === 'defineVars' ||
+								node.callee.property.value === 'keyframes') &&
 							node.callee.object.type === 'Identifier' &&
 							stateManager.verifyStylexIdentifier(
 								node.callee.object.value
 							)) ||
 						(node.callee.type === 'Identifier' &&
-							['create', 'createTheme', 'defineVars'].includes(
+							['create', 'createTheme', 'defineVars', 'keyframes'].includes(
 								(verifiedImport = stateManager.verifyNamedImport(
 									node.callee.value
 								)) || ''
@@ -347,7 +349,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 				KeyValueProperty(node, state) {
 					console.log(state, inspect(node));
 					if (state && state.callInside != null) {
-						const resultingValue = evaluate(node.value);
+						const resultingValue = evaluate(node.value, stateManager);
 
 						console.log('resultingValue', resultingValue);
 
@@ -690,7 +692,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 
 						cssLines.push(`${indentation.slice(2)}${parentSelector} {`);
 
-						const staticValue = evaluate(node.value);
+						const staticValue = evaluate(node.value, stateManager);
 
 						// TODO: Support identifiers from themes
 						if (staticValue.static) {

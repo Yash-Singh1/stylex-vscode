@@ -1,13 +1,14 @@
 import * as stylex from '@stylexjs/stylex';
-import { createTheme } from '@stylexjs/stylex'
+import stylex2 from '@stylexjs/stylex';
+import { createTheme as createThemee } from '@stylexjs/stylex'
 import {colors, spacing} from './tokens.stylex';
 
 // A constant can be used to avoid repeating the media query
 const DARK = '@media (prefers-color-scheme: dark)';
 
 // Dracula theme
-export const dracula = stylex.createTheme(colors, {
-  primaryText: {default: 'purple', [DARK]: 'lightpurple'},
+export const dracula = createThemee(colors, {
+  primaryText: {default: 'purple', [DARK]: ['lightpurple', 'deeppink']},
   secondaryText: {default: 'pink', [DARK]: stylex.firstThatWorks('hotpink', 4, null, 'deeppink')},
   accent: 'red',
   background: {default: `#${'4'}44`, [DARK]: stylex.firstThatWorks('black')},
@@ -15,7 +16,7 @@ export const dracula = stylex.createTheme(colors, {
   lineColor: 'red',
 });
 
-const styles = stylex.create({
+const styles = stylex2.create({
   header: {
     position: stylex.firstThatWorks('sticky', '-webkit-sticky', 'fixed'),
   },
@@ -97,4 +98,26 @@ const s = stylex.create({
       }
     }
   },
+});
+
+const pulse = stylex.keyframes({
+  '0%': {transform: 'scale(1)', color: 'red'},
+  '50%': {transform: 'scale(1.1)', color: 'blue'},
+  '100%': {transform: 'scale(1)', color: 'green'},
+});
+
+const fadeIn = stylex.keyframes({
+  '0%': {opacity: 0},
+  '100%': {opacity: 1},
+});
+
+const fadeOut = stylex.keyframes({
+  '0%': {opacity: 1},
+  '100%': {opacity: 0},
+});
+
+export const animations = stylex.defineVars({
+  pulse,
+  fadeIn,
+  fadeOut,
 });
