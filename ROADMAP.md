@@ -9,3 +9,4 @@
 - Move to monorepo
 - Use pnpm as primary package manager
 - Add more concrete documentation
+- More insightful logging

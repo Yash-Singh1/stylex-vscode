@@ -20,7 +20,8 @@
     "onLanguage:javascript",
     "onLanguage:typescript",
     "onLanguage:javascriptreact",
-    "onLanguage:typescriptreact"
+    "onLanguage:typescriptreact",
+    "*"
   ],
   "main": "./client/out/extension",
   "contributes": {

@@ -18,16 +18,14 @@ import {
   DocumentColorParams,
   ColorInformation,
   Hover,
-  Position,
   MarkupKind,
-  TextEdit,
 } from "vscode-languageserver/node";
 
 import { readFileSync } from "node:fs";
-import { inspect } from "node:util";
+import { join } from "node:path";
 
 const wasmBuffer = readFileSync(
-  "../node_modules/@swc/wasm-web/wasm-web_bg.wasm",
+  join(__dirname, "../node_modules/@swc/wasm-web/wasm-web_bg.wasm"),
 );
 
 import { TextDocument } from "vscode-languageserver-textdocument";
