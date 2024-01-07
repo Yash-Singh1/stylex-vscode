@@ -531,25 +531,27 @@ let hasDiagnosticRelatedInformationCapability = false;
 							node.callee.property.type === 'Identifier' &&
 							(verifiedImport = node.callee.property.value)) ||
 						(node.callee.type === 'Identifier' &&
-							['create', 'createTheme', 'defineVars'].includes(
+							['create', 'createTheme', 'defineVars', 'keyframes'].includes(
 								(verifiedImport = stateManager.verifyNamedImport(
 									node.callee.value
 								)) || ''
 							) &&
 							verifiedImport)
 					) {
-						if (verifiedImport === 'create') {
+						const callerID =
+							parent?.type === 'VariableDeclarator' ? parent.id : null;
+
+						if (verifiedImport === 'create' || verifiedImport === 'keyframes') {
 							return {
 								...state,
-								callInside: 'create',
+								callInside: verifiedImport,
+								callerIdentifier:
+									callerID?.type === 'Identifier' ? callerID.value : null,
 							};
 						} else if (
 							verifiedImport === 'createTheme' ||
 							verifiedImport === 'defineVars'
 						) {
-							const callerID =
-								parent?.type === 'VariableDeclarator' ? parent.id : null;
-
 							return {
 								state: {
 									...state,
@@ -623,7 +625,8 @@ let hasDiagnosticRelatedInformationCapability = false;
 						}
 
 						const classLine = [
-							...(state.callInside === 'create'
+							...(state.callInside === 'create' ||
+							state.callInside === 'keyframes'
 								? []
 								: /* prettier-ignore */ [
 										state.callerIdentifier
@@ -631,7 +634,10 @@ let hasDiagnosticRelatedInformationCapability = false;
 											: ':root',
 									]),
 							...(<string[]>state.parentClass).slice(
-								state.callInside === 'create' ? 0 : 1
+								state.callInside === 'create' ||
+									state.callInside === 'keyframes'
+									? 0
+									: 1
 							),
 							key,
 						];
@@ -639,6 +645,11 @@ let hasDiagnosticRelatedInformationCapability = false;
 						const atIncluded = classLine.filter((className) =>
 							className.startsWith('@')
 						);
+						if (state.callInside === 'keyframes') {
+							atIncluded.unshift(
+								`@keyframes ${state.callerIdentifier || 'unknown'}`
+							);
+						}
 						const indentation = '  '.repeat(atIncluded.length + 1);
 
 						const cssLines: string[] = [];
@@ -666,7 +677,8 @@ let hasDiagnosticRelatedInformationCapability = false;
 								: classLine[0];
 
 						const propertyName =
-							state.callInside === 'create'
+							state.callInside === 'create' ||
+							state.callInside === 'keyframes'
 								? classLine
 										.reverse()
 										.find(
