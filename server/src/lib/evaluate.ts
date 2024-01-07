@@ -8,20 +8,20 @@ import type {
 import StateManager from "./state-manager";
 
 type ResultType =
-  | /* prettier-ignore */ {
-			value: InnerType;
-			static: false;
-		}
-  | /* prettier-ignore */ {
-			value: InnerType;
-			static: true;
-			span: Span;
-		}
-  | /* prettier-ignore */ {
-			id: string;
-			static: true;
-			span: Span;
-		};
+  | {
+      value: InnerType;
+      static: false;
+    }
+  | {
+      value: InnerType;
+      static: true;
+      span: Span;
+    }
+  | {
+      id: string;
+      static: true;
+      span: Span;
+    };
 
 type InnerType =
   | ResultType[]
@@ -440,22 +440,22 @@ export function evaluate(
       const propertyKey = "id" in property ? property.id : property.value;
 
       return "id" in object
-        ? /* prettier-ignore */ {
-						id: `${object.id}.${propertyKey}`,
-						static: true,
-						span: node.span,
-					}
-        : /* prettier-ignore */ {
-						value:
-							object.value == null
-								? object.value
-								: /* prettier-ignore */ typeof propertyKey === 'string'
-						? // @ts-expect-error -- Ignore member expression strict rules
-							object.value[propertyKey]
-						: undefined,
-						static: true,
-						span: node.span,
-					};
+        ? {
+            id: `${object.id}.${propertyKey}`,
+            static: true,
+            span: node.span,
+          }
+        : {
+            value:
+              object.value == null
+                ? object.value
+                : typeof propertyKey === "string"
+                  ? // @ts-expect-error -- Ignore member expression strict rules
+                    object.value[propertyKey]
+                  : undefined,
+            static: true,
+            span: node.span,
+          };
     }
 
     case "OptionalChainingExpression":

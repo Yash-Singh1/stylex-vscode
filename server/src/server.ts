@@ -410,13 +410,13 @@ let hasDiagnosticRelatedInformationCapability = false;
     );
 
     const colorValue = prevColor
-      ? /* prettier-ignore */ ({
-					mode: 'rgb',
-					r: prevColor.red,
-					g: prevColor.green,
-					b: prevColor.blue,
-					alpha: prevColor.alpha,
-				} satisfies Color)
+      ? ({
+          mode: "rgb",
+          r: prevColor.red,
+          g: prevColor.green,
+          b: prevColor.blue,
+          alpha: prevColor.alpha,
+        } satisfies Color)
       : undefined;
 
     const newColor = {
@@ -642,11 +642,11 @@ let hasDiagnosticRelatedInformationCapability = false;
               ...(state.callInside === "create" ||
               state.callInside === "keyframes"
                 ? []
-                : /* prettier-ignore */ [
-										state.callerIdentifier
-											? `.${state.callerIdentifier}`
-											: ':root',
-									]),
+                : [
+                    state.callerIdentifier
+                      ? `.${state.callerIdentifier}`
+                      : ":root",
+                  ]),
               ...(<string[]>state.parentClass).slice(
                 state.callInside === "create" ||
                   state.callInside === "keyframes"
@@ -676,18 +676,17 @@ let hasDiagnosticRelatedInformationCapability = false;
 
             const parentSelector =
               state.callInside === "create"
-                ? /* prettier-ignore */ '.' +
-									(classLine
-										.slice(0)
-										.filter(
-											(className, index) =>
-												index === 0 ||
-												(className !== 'default' &&
-													className.startsWith(':'))
-										)
-										.sort()
-										.reverse()
-										.join('') || 'unknown')
+                ? "." +
+                  (classLine
+                    .slice(0)
+                    .filter(
+                      (className, index) =>
+                        index === 0 ||
+                        (className !== "default" && className.startsWith(":")),
+                    )
+                    .sort()
+                    .reverse()
+                    .join("") || "unknown")
                 : classLine[0];
 
             const dashifyFn = (

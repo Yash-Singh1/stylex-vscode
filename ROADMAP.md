@@ -7,7 +7,5 @@
 - Unit testing for AST Utilities
 - E2E tests for extension itself
 - Move to monorepo
-- Overhaul ESLint configuration
 - Use pnpm as primary package manager
 - Add more concrete documentation
-- Fix prettier issues (currently just `prettier-ignore`ed)
