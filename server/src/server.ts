@@ -311,6 +311,8 @@ let hasDiagnosticRelatedInformationCapability = false;
 				},
 
 				CallExpression(node) {
+					let verifiedImport: string | undefined;
+
 					if (
 						(node.callee.type === 'MemberExpression' &&
 							node.callee.property.type === 'Identifier' &&
@@ -323,13 +325,16 @@ let hasDiagnosticRelatedInformationCapability = false;
 							)) ||
 						(node.callee.type === 'Identifier' &&
 							['create', 'createTheme', 'defineVars'].includes(
-								stateManager.verifyNamedImport(node.callee.value) || ''
-							))
+								(verifiedImport = stateManager.verifyNamedImport(
+									node.callee.value
+								)) || ''
+							) &&
+							verifiedImport)
 					) {
 						return {
 							callInside:
 								node.callee.type === 'Identifier'
-									? node.callee.value
+									? verifiedImport
 									: (<Identifier>node.callee.property).value,
 						};
 					}
@@ -523,23 +528,30 @@ let hasDiagnosticRelatedInformationCapability = false;
 				},
 
 				CallExpression(node, state, parent) {
+					let verifiedImport: string | undefined;
+
 					if (
-						node.callee.type === 'MemberExpression' &&
-						node.callee.property.type === 'Identifier' &&
-						node.callee.object.type === 'Identifier'
+						(node.callee.type === 'MemberExpression' &&
+							node.callee.object.type === 'Identifier' &&
+							stateManager.verifyStylexIdentifier(node.callee.object.value) &&
+							node.callee.property.type === 'Identifier' &&
+							(verifiedImport = node.callee.property.value)) ||
+						(node.callee.type === 'Identifier' &&
+							['create', 'createTheme', 'defineVars'].includes(
+								(verifiedImport = stateManager.verifyNamedImport(
+									node.callee.value
+								)) || ''
+							) &&
+							verifiedImport)
 					) {
-						if (
-							node.callee.property.value === 'create' &&
-							stateManager.verifyStylexIdentifier(node.callee.object.value)
-						) {
+						if (verifiedImport === 'create') {
 							return {
 								...state,
 								callInside: 'create',
 							};
 						} else if (
-							(node.callee.property.value === 'createTheme' ||
-								node.callee.property.value === 'defineVars') &&
-							stateManager.verifyStylexIdentifier(node.callee.object.value)
+							verifiedImport === 'createTheme' ||
+							verifiedImport === 'defineVars'
 						) {
 							const callerID =
 								parent?.type === 'VariableDeclarator' ? parent.id : null;
@@ -547,16 +559,14 @@ let hasDiagnosticRelatedInformationCapability = false;
 							return {
 								state: {
 									...state,
-									callInside: node.callee.property.value,
+									callInside: verifiedImport,
 									callerIdentifier:
 										callerID?.type === 'Identifier'
 											? callerID.value
 											: null,
 								},
 								ignore: [
-									node.callee.property.value === 'createTheme'
-										? 'arguments.0'
-										: '',
+									verifiedImport === 'createTheme' ? 'arguments.0' : '',
 									'callee',
 								],
 							};
@@ -640,7 +650,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 						);
 						const indentation = '  '.repeat(atIncluded.length + 1);
 
-						let cssLines: string[] = [];
+						const cssLines: string[] = [];
 
 						let indentSize = 0;
 
@@ -680,43 +690,44 @@ let hasDiagnosticRelatedInformationCapability = false;
 
 						cssLines.push(`${indentation.slice(2)}${parentSelector} {`);
 
-						// TODO: Support static template literal (use `evaluate`)
-						if (node.value.type === 'StringLiteral') {
-							cssLines.push(
-								`${indentation}${propertyName}: ${node.value.value};`
-							);
-						} else if (node.value.type === 'CallExpression') {
-							if (
-								node.value.callee.type === 'MemberExpression' &&
-								node.value.callee.object.type === 'Identifier' &&
-								stateManager.verifyStylexIdentifier(
-									node.value.callee.object.value
-								) &&
-								node.value.callee.property.type === 'Identifier' &&
-								node.value.callee.property.value === 'firstThatWorks'
-							) {
-								for (const arg of node.value.arguments.reverse()) {
-									if (
-										arg.spread ||
-										arg.expression.type !== 'StringLiteral'
-									) {
-										cssLines = [];
-										break;
-									}
+						const staticValue = evaluate(node.value);
 
+						// TODO: Support identifiers from themes
+						if (staticValue.static) {
+							if ('value' in staticValue) {
+								if (staticValue.value == null) {
 									cssLines.push(
-										`${indentation}${propertyName}: ${arg.expression.value};`
+										`${indentation}${propertyName}: initial;`
+									);
+								} else if (typeof staticValue.value === 'string') {
+									cssLines.push(
+										`${indentation}${propertyName}: ${staticValue.value};`
+									);
+								} else if (Array.isArray(staticValue.value)) {
+									for (const element of staticValue.value) {
+										if (element.static && 'value' in element) {
+											if (typeof element.value === 'string') {
+												cssLines.push(
+													`${indentation}${propertyName}: ${element.value};`
+												);
+											} else if (element.value == null) {
+												cssLines.push(
+													`${indentation}${propertyName}: initial;`
+												);
+											} else if (typeof element.value === 'number') {
+												// TODO: Infer units based on property name
+												cssLines.push(
+													`${indentation}${propertyName}: ${element.value};`
+												);
+											}
+										}
+									}
+								} else if (typeof staticValue.value === 'number') {
+									cssLines.push(
+										`${indentation}${propertyName}: ${staticValue.value};`
 									);
 								}
 							}
-						} else if (node.value.type === 'NumericLiteral') {
-							cssLines.push(
-								`${indentation}${propertyName}: ${node.value.value}${
-									node.value.value ? 'px' : ''
-								};`
-							);
-						} else if (node.value.type === 'NullLiteral') {
-							cssLines.push(`${indentation}${propertyName}: initial;`);
 						}
 
 						cssLines.push(`${indentation.slice(2)}}`);

@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+import { createTheme } from '@stylexjs/stylex'
 import {colors, spacing} from './tokens.stylex';
 
 // A constant can be used to avoid repeating the media query
@@ -9,7 +10,7 @@ export const dracula = stylex.createTheme(colors, {
   primaryText: {default: 'purple', [DARK]: 'lightpurple'},
   secondaryText: {default: 'pink', [DARK]: stylex.firstThatWorks('hotpink', 4, null, 'deeppink')},
   accent: 'red',
-  background: {default: '#555', [DARK]: stylex.firstThatWorks('black')},
+  background: {default: `#${'4'}44`, [DARK]: stylex.firstThatWorks('black')},
   fontSize: 42,
   lineColor: 'red',
 });
