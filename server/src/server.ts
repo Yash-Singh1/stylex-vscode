@@ -37,6 +37,8 @@ import { evaluate } from './lib/evaluate';
 import StateManager from './lib/state-manager';
 import { handleImports } from './lib/imports-handler';
 import dashify from '@stylexjs/shared/lib/utils/dashify';
+import transformValue from '@stylexjs/shared/lib/transform-value';
+import stylexBabelPlugin from '@stylexjs/babel-plugin';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -320,14 +322,10 @@ let hasDiagnosticRelatedInformationCapability = false;
 								node.callee.property.value === 'defineVars' ||
 								node.callee.property.value === 'keyframes') &&
 							node.callee.object.type === 'Identifier' &&
-							stateManager.verifyStylexIdentifier(
-								node.callee.object.value
-							)) ||
+							stateManager.verifyStylexIdentifier(node.callee.object.value)) ||
 						(node.callee.type === 'Identifier' &&
 							['create', 'createTheme', 'defineVars', 'keyframes'].includes(
-								(verifiedImport = stateManager.verifyNamedImport(
-									node.callee.value
-								)) || ''
+								(verifiedImport = stateManager.verifyNamedImport(node.callee.value)) || ''
 							) &&
 							verifiedImport)
 					) {
@@ -452,8 +450,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 					(params.position.line !== start.line ||
 						params.position.character >= start.character) &&
 					params.position.line <= end.line &&
-					(params.position.line !== end.line ||
-						params.position.character <= end.character)
+					(params.position.line !== end.line || params.position.character <= end.character)
 				) {
 					return styleHover;
 				}
@@ -533,21 +530,17 @@ let hasDiagnosticRelatedInformationCapability = false;
 							(verifiedImport = node.callee.property.value)) ||
 						(node.callee.type === 'Identifier' &&
 							['create', 'createTheme', 'defineVars', 'keyframes'].includes(
-								(verifiedImport = stateManager.verifyNamedImport(
-									node.callee.value
-								)) || ''
+								(verifiedImport = stateManager.verifyNamedImport(node.callee.value)) || ''
 							) &&
 							verifiedImport)
 					) {
-						const callerID =
-							parent?.type === 'VariableDeclarator' ? parent.id : null;
+						const callerID = parent?.type === 'VariableDeclarator' ? parent.id : null;
 
 						if (verifiedImport === 'create' || verifiedImport === 'keyframes') {
 							return {
 								...state,
 								callInside: verifiedImport,
-								callerIdentifier:
-									callerID?.type === 'Identifier' ? callerID.value : null,
+								callerIdentifier: callerID?.type === 'Identifier' ? callerID.value : null,
 							};
 						} else if (
 							verifiedImport === 'createTheme' ||
@@ -557,15 +550,9 @@ let hasDiagnosticRelatedInformationCapability = false;
 								state: {
 									...state,
 									callInside: verifiedImport,
-									callerIdentifier:
-										callerID?.type === 'Identifier'
-											? callerID.value
-											: null,
+									callerIdentifier: callerID?.type === 'Identifier' ? callerID.value : null,
 								},
-								ignore: [
-									verifiedImport === 'createTheme' ? 'arguments.0' : '',
-									'callee',
-								],
+								ignore: [verifiedImport === 'createTheme' ? 'arguments.0' : '', 'callee'],
 							};
 						}
 					}
@@ -583,10 +570,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 				KeyValueProperty(node, state) {
 					let key: string | undefined;
 
-					if (
-						node.key.type === 'Identifier' ||
-						node.key.type === 'StringLiteral'
-					) {
+					if (node.key.type === 'Identifier' || node.key.type === 'StringLiteral') {
 						key = node.key.value;
 					} else if (node.key.type === 'Computed') {
 						if (node.key.expression.type === 'StringLiteral') {
@@ -606,9 +590,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 						const startSpanRelative = document.positionAt(
 							node.key.span.start - moduleStart
 						);
-						const endSpanRelative = document.positionAt(
-							node.key.span.end - moduleStart
-						);
+						const endSpanRelative = document.positionAt(node.key.span.end - moduleStart);
 
 						// Don't use out of range nodes
 						if (
@@ -616,8 +598,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 								params.position.line >= startSpanRelative.line &&
 								params.position.line <= endSpanRelative.line &&
 								(params.position.line !== startSpanRelative.line ||
-									params.position.character >=
-										startSpanRelative.character) &&
+									params.position.character >= startSpanRelative.character) &&
 								(params.position.line !== endSpanRelative.line ||
 									params.position.character <= endSpanRelative.character)
 							)
@@ -626,8 +607,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 						}
 
 						const classLine = [
-							...(state.callInside === 'create' ||
-							state.callInside === 'keyframes'
+							...(state.callInside === 'create' || state.callInside === 'keyframes'
 								? []
 								: /* prettier-ignore */ [
 										state.callerIdentifier
@@ -635,25 +615,18 @@ let hasDiagnosticRelatedInformationCapability = false;
 											: ':root',
 									]),
 							...(<string[]>state.parentClass).slice(
-								state.callInside === 'create' ||
-									state.callInside === 'keyframes'
-									? 0
-									: 1
+								state.callInside === 'create' || state.callInside === 'keyframes' ? 0 : 1
 							),
 							key,
 						];
 
-						const atIncluded = classLine.filter((className) =>
-							className.startsWith('@')
-						);
+						const atIncluded = classLine.filter((className) => className.startsWith('@'));
 						if (state.callInside === 'keyframes') {
-							atIncluded.unshift(
-								`@keyframes ${state.callerIdentifier || 'unknown'}`
-							);
+							atIncluded.unshift(`@keyframes ${state.callerIdentifier || 'unknown'}`);
 						}
 						const indentation = '  '.repeat(atIncluded.length + 1);
 
-						const cssLines: string[] = [];
+						let cssLines: string[] = [];
 
 						let indentSize = 0;
 
@@ -677,11 +650,16 @@ let hasDiagnosticRelatedInformationCapability = false;
 										.join('') || 'unknown')
 								: classLine[0];
 
-						const propertyName = (
+						const dashifyFn = (
 							dashify as unknown as typeof import('@stylexjs/shared/lib/utils/dashify')
-						).default(
-							(state.callInside === 'create' ||
-							state.callInside === 'keyframes'
+						).default;
+
+						const transformValueFn = (
+							transformValue as unknown as typeof import('@stylexjs/shared/lib/transform-value')
+						).default;
+
+						const propertyName =
+							(state.callInside === 'create' || state.callInside === 'keyframes'
 								? classLine
 										.reverse()
 										.find(
@@ -692,22 +670,27 @@ let hasDiagnosticRelatedInformationCapability = false;
 													className === 'default'
 												)
 										)
-								: `--${state.parentClass[0] || key}`) || 'unknown'
-						);
+								: `--${state.parentClass[0] || key}`) || 'unknown';
 
 						cssLines.push(`${indentation.slice(2)}${parentSelector} {`);
 
 						const staticValue = evaluate(node.value, stateManager);
 
+						const stylexConfig = {
+							dev: true,
+							test: false,
+							classNamePrefix: '',
+							styleResolution: 'application-order',
+							useRemForFontSize: false,
+						} as const;
+
 						if (staticValue.static) {
 							if ('value' in staticValue) {
 								if (staticValue.value == null) {
-									cssLines.push(
-										`${indentation}${propertyName}: initial;`
-									);
+									cssLines.push(`${indentation}${dashifyFn(propertyName)}: initial;`);
 								} else if (typeof staticValue.value === 'string') {
 									cssLines.push(
-										`${indentation}${propertyName}: ${staticValue.value};`
+										`${indentation}${dashifyFn(propertyName)}: ${staticValue.value};`
 									);
 								} else if (Array.isArray(staticValue.value)) {
 									for (const element of staticValue.value) {
@@ -715,35 +698,44 @@ let hasDiagnosticRelatedInformationCapability = false;
 											if ('value' in element) {
 												if (typeof element.value === 'string') {
 													cssLines.push(
-														`${indentation}${propertyName}: ${element.value};`
+														`${indentation}${dashifyFn(propertyName)}: ${transformValueFn(
+															propertyName,
+															element.value,
+															stylexConfig
+														)};`
 													);
 												} else if (element.value == null) {
 													cssLines.push(
-														`${indentation}${propertyName}: initial;`
+														`${indentation}${dashifyFn(propertyName)}: initial;`
 													);
-												} else if (
-													typeof element.value === 'number'
-												) {
-													// TODO: Infer units based on property name
+												} else if (typeof element.value === 'number') {
 													cssLines.push(
-														`${indentation}${propertyName}: ${element.value};`
+														`${indentation}${dashifyFn(propertyName)}: ${transformValueFn(
+															propertyName,
+															element.value,
+															stylexConfig
+														)};`
 													);
 												}
 											} else if ('id' in element) {
 												cssLines.push(
-													`${indentation}${propertyName}: var(--${element.id});`
+													`${indentation}${dashifyFn(propertyName)}: var(--${element.id});`
 												);
 											}
 										}
 									}
 								} else if (typeof staticValue.value === 'number') {
 									cssLines.push(
-										`${indentation}${propertyName}: ${staticValue.value};`
+										`${indentation}${dashifyFn(propertyName)}: ${transformValueFn(
+											propertyName,
+											staticValue.value,
+											stylexConfig
+										)};`
 									);
 								}
 							} else if ('id' in staticValue) {
 								cssLines.push(
-									`${indentation}${propertyName}: var(--${staticValue.id});`
+									`${indentation}${dashifyFn(propertyName)}: var(--${staticValue.id});`
 								);
 							}
 						}
@@ -755,18 +747,20 @@ let hasDiagnosticRelatedInformationCapability = false;
 						}
 
 						if (cssLines.length > 2) {
+							cssLines = [
+								stylexBabelPlugin.processStylexRules(
+									[['abcd', { ltr: cssLines.join('\n'), rtl: null }, 3000]],
+									false
+								),
+							];
 							hover = {
 								contents: {
 									kind: MarkupKind.Markdown,
 									value: ['```css', ...cssLines, '```'].join('\n'),
 								},
 								range: {
-									start: document.positionAt(
-										node.key.span.start - moduleStart
-									),
-									end: document.positionAt(
-										node.key.span.end - moduleStart
-									),
+									start: document.positionAt(node.key.span.start - moduleStart),
+									end: document.positionAt(node.key.span.end - moduleStart),
 								},
 							};
 

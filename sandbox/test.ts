@@ -112,6 +112,8 @@ const styles = stylex.create({
     backgroundColor: 'red',
     padding: '1rem',
     paddingInlineStart: '2rem',
+    animationName: pulse,
+    animationDuration: 1,
   },
   dynamic: (r, g, b) => ({
     color: `rgb(${r}, ${g}, ${b})`,

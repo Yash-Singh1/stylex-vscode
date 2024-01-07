@@ -13,7 +13,10 @@
 		"url": "https://github.com/Microsoft/vscode-extension-samples"
 	},
 	"dependencies": {
+		"@babel/preset-typescript": "^7.23.3",
+		"@stylexjs/babel-plugin": "^0.4.1",
 		"@stylexjs/shared": "^0.4.1",
+		"@types/babel__core": "^7.20.5",
 		"color-name": "^2.0.0",
 		"culori": "^3.3.0",
 		"vscode-languageserver": "^9.0.1",

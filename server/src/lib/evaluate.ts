@@ -1,4 +1,10 @@
-import type { ComputedPropName, Expression, Span, TemplateElement } from '@swc/wasm-web';
+import type {
+	ArrayExpression,
+	ComputedPropName,
+	Expression,
+	Span,
+	TemplateElement,
+} from '@swc/wasm-web';
 import StateManager from './state-manager';
 
 type ResultType =
@@ -27,6 +33,35 @@ type InnerType =
 	| RegExp
 	| Record<string, ResultType>
 	| bigint;
+
+function processArrayExpression(node: ArrayExpression, stateManager: StateManager) {
+	const result = node.elements.reduce<any[]>((accumalator, exprOrSpread) => {
+		if (!exprOrSpread || !accumalator) return accumalator;
+		if (exprOrSpread.spread) {
+			const result = evaluate(exprOrSpread.expression, stateManager);
+
+			if (!result.static) {
+				accumalator.push(result);
+			}
+
+			accumalator.push(
+				...(<any[]>(
+					(result &&
+					typeof result === 'object' &&
+					(Array.isArray(result) ||
+						(Symbol.iterator in result && typeof result[Symbol.iterator] === 'function'))
+						? result
+						: [result])
+				))
+			);
+		} else {
+			accumalator.push(evaluate(exprOrSpread.expression, stateManager));
+		}
+		return accumalator;
+	}, []);
+
+	return { value: result, static: true, span: node.span } satisfies ResultType;
+}
 
 export function evaluate(
 	node: Expression | ComputedPropName | TemplateElement,
@@ -57,37 +92,7 @@ export function evaluate(
 				throw new Error('Identifier not implemented');
 			}
 		case 'ArrayExpression': {
-			const result = node.elements.reduce<any[] | false>((accumalator, exprOrSpread) => {
-				if (!exprOrSpread || !accumalator) return accumalator;
-				if (exprOrSpread.spread) {
-					const result = evaluate(exprOrSpread.expression, stateManager);
-
-					if (!result.static) {
-						accumalator.push(result);
-					}
-
-					accumalator.push(
-						...(<any[]>(
-							(result &&
-							typeof result === 'object' &&
-							(Array.isArray(result) ||
-								(Symbol.iterator in result &&
-									typeof result[Symbol.iterator] === 'function'))
-								? result
-								: [result])
-						))
-					);
-				} else {
-					accumalator.push(evaluate(exprOrSpread.expression, stateManager));
-				}
-				return accumalator;
-			}, []);
-
-			if (result === false) {
-				return { value: undefined, static: false };
-			} else {
-				return { value: result, static: true, span: node.span };
-			}
+			return processArrayExpression(node, stateManager);
 		}
 
 		case 'ObjectExpression': {
@@ -391,15 +396,18 @@ export function evaluate(
 				(node.callee.type === 'Identifier' &&
 					stateManager.verifyNamedImport(node.callee.value) === 'firstThatWorks')
 			) {
-				return evaluate(
+				const result = processArrayExpression(
 					{
 						type: 'ArrayExpression',
 						span: node.span,
-						// TODO: Reverse spreads too, maybe we should avoid using ArrayExpression shortcut
-						elements: node.arguments.reverse(),
+						elements: node.arguments,
 					},
 					stateManager
 				);
+
+				result.value = result.value.reverse();
+
+				return result;
 			}
 
 			return { value: undefined, static: false };
