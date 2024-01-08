@@ -3,14 +3,14 @@
   "description": "StyleX language server that runs on node.",
   "version": "0.0.1",
   "type": "module",
-  "author": "Microsoft Corporation",
+  "author": "Yash Singh",
   "license": "MIT",
   "engines": {
     "node": "*"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Microsoft/vscode-extension-samples"
+    "url": "https://github.com/Yash-Singh1/stylex-lsp-vscode"
   },
   "dependencies": {
     "@babel/preset-typescript": "^7.23.3",
