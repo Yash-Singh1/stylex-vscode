@@ -5,6 +5,7 @@
   "author": "Yash Singh",
   "license": "MIT",
   "version": "0.0.1",
+  "icon": "assets/stylexlogo.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/Yash-Singh1/stylex-vscode"
