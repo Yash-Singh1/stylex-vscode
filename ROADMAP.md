@@ -1,6 +1,8 @@
 # Roadmap
 
 - Support `@stylexjs/open-props` for document colors
+- Performance Improvements
+  - There is a lot of potential for backtracking and caching
 - Document colors on `StyleXStyles` and `StaticStyles`
 - Use CSS Language Service utilities for auto-completion
   - Might need to figure out how to filter out typed styles (e.g. `StyleXStyles` and `StaticStyles`)
