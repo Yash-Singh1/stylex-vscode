@@ -1,5 +1,5 @@
 {
-  "name": "stylex-lsp",
+  "name": "stylex",
   "displayName": "StyleX Intellisense",
   "description": "Intellisense for StyleX inside Visual Studio Code",
   "author": "Yash Singh",
@@ -9,7 +9,7 @@
     "type": "git",
     "url": "https://github.com/Yash-Singh1/stylex-lsp-vscode"
   },
-  "publisher": "Yash-Singh1",
+  "publisher": "yash-singh",
   "categories": [],
   "keywords": [
     "multi-root ready",
