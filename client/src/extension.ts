@@ -51,8 +51,12 @@ export function activate(context: ExtensionContext) {
   const clientOptions: LanguageClientOptions = {
     // Register the server for plain text documents
     documentSelector: [
-      { scheme: "file", language: "plaintext" },
-      ...jsLanguages.map((lang) => ({ schema: "file", language: lang })),
+      ...[
+        ...jsLanguages,
+        ...(<string[]>(
+          (workspace.getConfiguration("stylex").get("includedLanguages") || [])
+        )),
+      ].map((lang) => ({ schema: "file", language: lang })),
     ],
     synchronize: {
       // Notify the server about file changes to '.clientrc files contained in the workspace
@@ -62,8 +66,8 @@ export function activate(context: ExtensionContext) {
 
   // Create the language client and start the client.
   client = new LanguageClient(
-    "languageServerExample",
-    "Language Server Example",
+    "stylex",
+    "StyleX Language Server",
     serverOptions,
     clientOptions,
   );

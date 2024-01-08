@@ -1,7 +1,7 @@
 {
-  "name": "lsp-sample-server",
-  "description": "Example implementation of a language server in node.",
-  "version": "1.0.0",
+  "name": "stylex-language-server",
+  "description": "StyleX language server that runs on node.",
+  "version": "0.0.1",
   "type": "module",
   "author": "Microsoft Corporation",
   "license": "MIT",

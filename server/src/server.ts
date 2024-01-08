@@ -53,6 +53,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 
 // Wrap server in async functions to allow "top-level await"
 (async function () {
+  // Import swc and initialize the WASM module
   const init = await import("@swc/wasm-web/wasm-web.js");
   await init.default(wasmBuffer);
 
@@ -84,6 +85,7 @@ let hasDiagnosticRelatedInformationCapability = false;
         hoverProvider: true,
       },
     };
+
     if (hasWorkspaceFolderCapability) {
       result.capabilities.workspace = {
         workspaceFolders: {
@@ -91,6 +93,7 @@ let hasDiagnosticRelatedInformationCapability = false;
         },
       };
     }
+
     return result;
   });
 
@@ -102,42 +105,40 @@ let hasDiagnosticRelatedInformationCapability = false;
         undefined,
       );
     }
+
     if (hasWorkspaceFolderCapability) {
       connection.workspace.onDidChangeWorkspaceFolders((_event) => {
         connection.console.log("Workspace folder change event received.");
       });
     }
   });
-
-  // The example settings
-  interface ExampleSettings {
-    maxNumberOfProblems: number;
+  interface UserConfiguration {
+    includedLanguages: string[];
   }
 
   // The global settings, used when the `workspace/configuration` request is not supported by the client.
   // Please note that this is not the case when using this server with the client provided in this example
   // but could happen with other clients.
-  const defaultSettings: ExampleSettings = { maxNumberOfProblems: 1000 };
-  let globalSettings: ExampleSettings = defaultSettings;
+  const defaultSettings = {
+    includedLanguages: [],
+  } satisfies UserConfiguration;
+  let globalSettings: UserConfiguration = defaultSettings;
 
   // Cache the settings of all open documents
-  const documentSettings: Map<string, Thenable<ExampleSettings>> = new Map();
+  const documentSettings: Map<string, Thenable<UserConfiguration>> = new Map();
 
   connection.onDidChangeConfiguration((change) => {
     if (hasConfigurationCapability) {
       // Reset all cached document settings
       documentSettings.clear();
     } else {
-      globalSettings = <ExampleSettings>(
-        (change.settings.languageServerExample || defaultSettings)
+      globalSettings = <UserConfiguration>(
+        (change.settings.stylex || defaultSettings)
       );
     }
-
-    // Revalidate all open text documents
-    documents.all().forEach(validateTextDocument);
   });
 
-  function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
+  function getDocumentSettings(resource: string): Thenable<UserConfiguration> {
     if (!hasConfigurationCapability) {
       return Promise.resolve(globalSettings);
     }
@@ -145,7 +146,7 @@ let hasDiagnosticRelatedInformationCapability = false;
     if (!result) {
       result = connection.workspace.getConfiguration({
         scopeUri: resource,
-        section: "languageServerExample",
+        section: "stylex",
       });
       documentSettings.set(resource, result);
     }
@@ -156,64 +157,6 @@ let hasDiagnosticRelatedInformationCapability = false;
   documents.onDidClose((e) => {
     documentSettings.delete(e.document.uri);
   });
-
-  // The content of a text document has changed. This event is emitted
-  // when the text document first opened or when its content has changed.
-  documents.onDidChangeContent((change) => {
-    validateTextDocument(change.document);
-  });
-
-  async function validateTextDocument(
-    textDocument: TextDocument,
-  ): Promise<void> {
-    // In this simple example we get the settings for every validate run.
-    const settings = await getDocumentSettings(textDocument.uri);
-
-    // The validator creates diagnostics for all uppercase words length 2 and more
-    const text = textDocument.getText();
-    const pattern = /\b[A-Z]{2,}\b/g;
-    let m: RegExpExecArray | null;
-
-    let problems = 0;
-    const diagnostics: Diagnostic[] = [];
-    while (
-      (m = pattern.exec(text)) &&
-      problems < settings.maxNumberOfProblems
-    ) {
-      problems++;
-      const diagnostic: Diagnostic = {
-        severity: DiagnosticSeverity.Warning,
-        range: {
-          start: textDocument.positionAt(m.index),
-          end: textDocument.positionAt(m.index + m[0].length),
-        },
-        message: `${m[0]} is all uppercase.`,
-        source: "ex",
-      };
-      if (hasDiagnosticRelatedInformationCapability) {
-        diagnostic.relatedInformation = [
-          {
-            location: {
-              uri: textDocument.uri,
-              range: Object.assign({}, diagnostic.range),
-            },
-            message: "Spelling matters",
-          },
-          {
-            location: {
-              uri: textDocument.uri,
-              range: Object.assign({}, diagnostic.range),
-            },
-            message: "Particularly for names",
-          },
-        ];
-      }
-      diagnostics.push(diagnostic);
-    }
-
-    // Send the computed diagnostics to VSCode.
-    connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-  }
 
   connection.onDidOpenTextDocument((_change) => {
     // Monitored files have change in VSCode
@@ -244,16 +187,15 @@ let hasDiagnosticRelatedInformationCapability = false;
         // TODO: Make this have a code action maybe? Or it would be better if StyleX shifted away from all imports
         // @see https://github.com/facebook/stylex/discussions/261
         {
-          label: "Import StyleX",
+          label: "Import StyleX Namespace",
           kind: CompletionItemKind.Reference,
-          insertText: `import stylex from ${quote}@stylexjs/stylex${quote};`,
+          insertText: `import * as stylex from ${quote}@stylexjs/stylex${quote};`,
         },
         // TODO: Look into using CSS Language Server for more completion items
       ];
     },
   );
 
-  // TODO: Figure out how to cache this
   const colorCache = new Map<string, ColorInformation["color"]>();
 
   // We might want to limit this to color restricted properties to allow further reliability (idk)
@@ -261,12 +203,6 @@ let hasDiagnosticRelatedInformationCapability = false;
   connection.onDocumentColor((params: DocumentColorParams) => {
     const textDocument = documents.get(params.textDocument.uri)!;
     const text = textDocument.getText();
-
-    // TODO: Language ID configuration
-    // console.log(textDocument.languageId);
-    // if (!jsLanguages.includes(textDocument.languageId)) {
-    // 	return [];
-    // }
 
     let parseResult;
     try {

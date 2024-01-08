@@ -1,17 +1,20 @@
 {
-  "name": "lsp-sample",
-  "description": "A language server example",
+  "name": "stylex-lsp",
+  "description": "Language Server Protocol for StyleX",
   "author": "Microsoft Corporation",
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/Microsoft/vscode-extension-samples"
   },
-  "publisher": "vscode-samples",
+  "publisher": "Yash-Singh1",
   "categories": [],
   "keywords": [
-    "multi-root ready"
+    "multi-root ready",
+    "lsp",
+    "language-server",
+    "stylex"
   ],
   "engines": {
     "vscode": "^1.75.0"
@@ -21,21 +24,23 @@
     "onLanguage:typescript",
     "onLanguage:javascriptreact",
     "onLanguage:typescriptreact",
-    "*"
+    "onStartupFinished"
   ],
   "main": "./client/out/extension",
   "contributes": {
     "configuration": {
       "type": "object",
-      "title": "Example configuration",
+      "title": "StyleX Intellisense",
       "properties": {
-        "languageServerExample.maxNumberOfProblems": {
-          "scope": "resource",
-          "type": "number",
-          "default": 100,
-          "description": "Controls the maximum number of problems produced by the server."
+        "stylex.includedLanguages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Enables the StyleX language server to provide intellisense on unsupported languages (must have a TypeScript parsable syntax)."
         },
-        "languageServerExample.trace.server": {
+        "stylex.trace.server": {
           "scope": "window",
           "type": "string",
           "enum": [
@@ -51,7 +56,9 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./client && tsup server/src/server.ts --no-splitting --out-dir server/out",
+    "compile:client": "tsc -p ./client",
+    "compile:server": "tsup server/src/server.ts --no-splitting --out-dir server/out",
+    "compile": "concurrently \"npm run compile:client\" \"npm run compile:server\"",
     "watch": "concurrently \"tsc -w -p ./client\" \"tsup server/src/server.ts --no-splitting --out-dir server/out --watch --ignore-watch client\"",
     "lint": "eslint ./client/src ./server/src --ext .ts,.tsx && prettier --check \"**/*.{ts,tsx,js,json,md}\"",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
