@@ -7,7 +7,7 @@
   "publisher": "vscode",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Yash-Singh1/stylex-lsp-vscode"
+    "url": "https://github.com/Yash-Singh1/stylex-vscode"
   },
   "engines": {
     "vscode": "^1.75.0"
