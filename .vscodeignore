@@ -4,12 +4,14 @@
 .gitignore
 **/tsconfig.json
 **/tsconfig.base.json
-contributing.md
+CONTRIBUTING.md
 .travis.yml
-client/node_modules/**
+node_modules/**
 !client/node_modules/vscode-jsonrpc/**
 !client/node_modules/vscode-languageclient/**
 !client/node_modules/vscode-languageserver-protocol/**
 !client/node_modules/vscode-languageserver-types/**
 !client/node_modules/{minimatch,brace-expansion,concat-map,balanced-match}/**
 !client/node_modules/{semver,lru-cache,yallist}/**
+!server/node_modules/@stylexjs/**
+!assets/**

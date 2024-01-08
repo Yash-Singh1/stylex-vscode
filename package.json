@@ -1,6 +1,7 @@
 {
   "name": "stylex-lsp",
-  "description": "Language Server Protocol for StyleX",
+  "displayName": "StyleX Intellisense",
+  "description": "Intellisense for StyleX inside Visual Studio Code",
   "author": "Yash Singh",
   "license": "MIT",
   "version": "0.0.1",
