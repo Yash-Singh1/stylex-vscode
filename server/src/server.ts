@@ -26,7 +26,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { States, walk } from "./lib/walk";
 import { culoriColorToVscodeColor, getColorFromValue } from "./lib/color-logic";
 import { type Color, formatHex8, formatRgb, formatHsl } from "culori";
-import { Identifier, StringLiteral } from "@swc/wasm-web/wasm-web.js";
+import type { Identifier, StringLiteral } from "@swc/types";
 import { evaluate } from "./lib/evaluate";
 import StateManager from "./lib/state-manager";
 import { handleImports } from "./lib/imports-handler";
@@ -107,14 +107,14 @@ let hasDiagnosticRelatedInformationCapability = false;
     }
   });
   interface UserConfiguration {
-    includedLanguages: string[];
+    includedLanguages: Record<string, string>;
   }
 
   // The global settings, used when the `workspace/configuration` request is not supported by the client.
   // Please note that this is not the case when using this server with the client provided in this example
   // but could happen with other clients.
   const defaultSettings = {
-    includedLanguages: [],
+    includedLanguages: {},
   } satisfies UserConfiguration;
   let globalSettings: UserConfiguration = defaultSettings;
 
@@ -192,17 +192,37 @@ let hasDiagnosticRelatedInformationCapability = false;
 
   const colorCache = new Map<string, ColorInformation["color"]>();
 
+  async function getLanguageId(uri: string, document: TextDocument) {
+    const { includedLanguages } = await getDocumentSettings(uri);
+
+    let languageId = document.languageId;
+    if (includedLanguages[languageId]) {
+      languageId = includedLanguages[languageId];
+    }
+
+    return languageId;
+  }
+
   // We might want to limit this to color restricted properties to allow further reliability (idk)
   // @see https://github.com/microsoft/vscode-css-languageservice/blob/main/src/data/webCustomData.ts
-  connection.onDocumentColor((params: DocumentColorParams) => {
+  connection.onDocumentColor(async (params: DocumentColorParams) => {
     const textDocument = documents.get(params.textDocument.uri)!;
     const text = textDocument.getText();
+
+    const languageId = await getLanguageId(
+      params.textDocument.uri,
+      textDocument,
+    );
 
     let parseResult;
     try {
       parseResult = init.parseSync(text, {
-        syntax: "typescript",
-        tsx: true,
+        ...(languageId.startsWith("typescript")
+          ? { syntax: "typescript", tsx: languageId.endsWith("react") }
+          : {
+              syntax: "ecmascript",
+              jsx: languageId.endsWith("react"),
+            }),
         target: "es2022",
         comments: false,
         decorators: true,
@@ -282,14 +302,15 @@ let hasDiagnosticRelatedInformationCapability = false;
                   : (<Identifier>node.callee.property).value,
             };
           }
-
-          return {
-            callInside: null,
-          };
         },
 
         KeyValueProperty(node, state) {
-          if (state && state.callInside != null) {
+          if (
+            state &&
+            state.callInside != null &&
+            node.value.type !== "ObjectExpression" &&
+            !("body" in node.value)
+          ) {
             const resultingValue = evaluate(node.value, stateManager);
 
             if (resultingValue.static && "value" in resultingValue) {
@@ -378,9 +399,11 @@ let hasDiagnosticRelatedInformationCapability = false;
 
   const hoverCache = new Map<string, Required<Hover>[]>();
 
-  connection.onHover((params) => {
+  connection.onHover(async (params) => {
     const document = documents.get(params.textDocument.uri)!;
     const text = document.getText();
+
+    const languageId = await getLanguageId(params.textDocument.uri, document);
 
     // TODO: Actually get caching working
     if (hoverCache.has(params.textDocument.uri)) {
@@ -407,8 +430,12 @@ let hasDiagnosticRelatedInformationCapability = false;
     let parseResult;
     try {
       parseResult = init.parseSync(text, {
-        syntax: "typescript",
-        tsx: true,
+        ...(languageId.startsWith("typescript")
+          ? { syntax: "typescript", tsx: languageId.endsWith("react") }
+          : {
+              syntax: "ecmascript",
+              jsx: languageId.endsWith("react"),
+            }),
         target: "es2022",
         comments: false,
         decorators: true,
@@ -434,6 +461,24 @@ let hasDiagnosticRelatedInformationCapability = false;
           stateManager.pushConstantScope();
         },
 
+        "*"(node) {
+          if ("span" in node) {
+            const startSpanRelative = document.positionAt(
+              node.span.start - moduleStart,
+            );
+            const endSpanRelative = document.positionAt(
+              node.span.end - moduleStart,
+            );
+
+            if (
+              params.position.line > endSpanRelative.line ||
+              params.position.line < startSpanRelative.line
+            ) {
+              return false;
+            }
+          }
+        },
+
         BlockStatement() {
           stateManager.pushConstantScope();
         },
@@ -442,10 +487,10 @@ let hasDiagnosticRelatedInformationCapability = false;
           stateManager.popConstantScope();
         },
 
-        VariableDeclaration(node) {
+        VariableDeclaration(node, state) {
           if (node.kind === "const") {
             for (const declaration of node.declarations) {
-              // TODO: Support more static things
+              // TODO: Support more static things for constants
               if (
                 declaration.init &&
                 declaration.init.type === "StringLiteral" &&
@@ -642,6 +687,7 @@ let hasDiagnosticRelatedInformationCapability = false;
             cssLines.push(`${indentation.slice(2)}${parentSelector} {`);
 
             const staticValue = evaluate(node.value, stateManager);
+            const dashifyPropertyKey = dashifyFn(propertyName);
 
             const stylexConfig = {
               dev: true,
@@ -655,13 +701,11 @@ let hasDiagnosticRelatedInformationCapability = false;
               if ("value" in staticValue) {
                 if (staticValue.value == null) {
                   cssLines.push(
-                    `${indentation}${dashifyFn(propertyName)}: initial;`,
+                    `${indentation}${dashifyPropertyKey}: initial;`,
                   );
                 } else if (typeof staticValue.value === "string") {
                   cssLines.push(
-                    `${indentation}${dashifyFn(propertyName)}: ${
-                      staticValue.value
-                    };`,
+                    `${indentation}${dashifyPropertyKey}: ${staticValue.value};`,
                   );
                 } else if (Array.isArray(staticValue.value)) {
                   for (const element of staticValue.value) {
@@ -669,9 +713,7 @@ let hasDiagnosticRelatedInformationCapability = false;
                       if ("value" in element) {
                         if (typeof element.value === "string") {
                           cssLines.push(
-                            `${indentation}${dashifyFn(
-                              propertyName,
-                            )}: ${transformValueFn(
+                            `${indentation}${dashifyPropertyKey}: ${transformValueFn(
                               propertyName,
                               element.value,
                               stylexConfig,
@@ -679,15 +721,11 @@ let hasDiagnosticRelatedInformationCapability = false;
                           );
                         } else if (element.value == null) {
                           cssLines.push(
-                            `${indentation}${dashifyFn(
-                              propertyName,
-                            )}: initial;`,
+                            `${indentation}${dashifyPropertyKey}: initial;`,
                           );
                         } else if (typeof element.value === "number") {
                           cssLines.push(
-                            `${indentation}${dashifyFn(
-                              propertyName,
-                            )}: ${transformValueFn(
+                            `${indentation}${dashifyPropertyKey}: ${transformValueFn(
                               propertyName,
                               element.value,
                               stylexConfig,
@@ -696,7 +734,7 @@ let hasDiagnosticRelatedInformationCapability = false;
                         }
                       } else if ("id" in element) {
                         cssLines.push(
-                          `${indentation}${dashifyFn(propertyName)}: ${
+                          `${indentation}${dashifyPropertyKey}: ${
                             ["animation", "animationName"].includes(
                               propertyName,
                             )
@@ -709,9 +747,7 @@ let hasDiagnosticRelatedInformationCapability = false;
                   }
                 } else if (typeof staticValue.value === "number") {
                   cssLines.push(
-                    `${indentation}${dashifyFn(
-                      propertyName,
-                    )}: ${transformValueFn(
+                    `${indentation}${dashifyPropertyKey}: ${transformValueFn(
                       propertyName,
                       staticValue.value,
                       stylexConfig,
@@ -720,7 +756,7 @@ let hasDiagnosticRelatedInformationCapability = false;
                 }
               } else if ("id" in staticValue) {
                 cssLines.push(
-                  `${indentation}${dashifyFn(propertyName)}: ${
+                  `${indentation}${dashifyPropertyKey}: ${
                     ["animation", "animationName"].includes(propertyName)
                       ? staticValue.id
                       : `var(--${staticValue.id})`

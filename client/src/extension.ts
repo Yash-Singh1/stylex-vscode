@@ -11,9 +11,7 @@ import {
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
-  console.log(
-    "HELLO! I EXIST! I'M THE CLIENT! I'M IN CLIENT/SRC/EXTENSION.TS!",
-  );
+  console.log("StyleX VSCode extension activated.");
 
   // The server is implemented in node
   const serverModule = context.asAbsolutePath(
@@ -35,22 +33,26 @@ export function activate(context: ExtensionContext) {
     },
   };
 
-  const jsLanguages = [
+  const supportedLanguages = [
     "javascript",
     "javascriptreact",
     "typescript",
     "typescriptreact",
   ];
 
+  const includedLanguages = (workspace
+    .getConfiguration("stylex")
+    .get("includedLanguages") || {}) as Record<string, string>;
+
   // Options to control the language client
   const clientOptions: LanguageClientOptions = {
     // Register the server for plain text documents
     documentSelector: [
       ...[
-        ...jsLanguages,
-        ...(<string[]>(
-          (workspace.getConfiguration("stylex").get("includedLanguages") || [])
-        )),
+        ...supportedLanguages,
+        ...Object.entries(includedLanguages)
+          .filter(([_newLang, oldLang]) => supportedLanguages.includes(oldLang))
+          .map(([newLang]) => newLang),
       ].map((lang) => ({ schema: "file", language: lang })),
     ],
     synchronize: {

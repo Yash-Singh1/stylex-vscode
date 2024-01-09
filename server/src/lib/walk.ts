@@ -64,9 +64,9 @@ import type {
   TsTypeQueryExpr,
   TsUnionOrIntersectionType,
   VariableDeclarator,
-} from "@swc/wasm-web";
+} from "@swc/types";
 
-type NodeType =
+export type NodeType =
   | Module
   | ModuleItem
   | ClassMember
@@ -331,6 +331,7 @@ const visitorKeyMap: {
   TsNamespaceExportDeclaration: ["id"],
   ExportDefaultSpecifier: ["exported"],
   Computed: ["expression"],
+  TsSatisfiesExpression: ["expression", "typeAnnotation"],
   Invalid: [],
 };
 
@@ -362,7 +363,7 @@ export function walk(
       | typeof States.EXIT
       // TODO: Record<string, any> overrides this, overhaul how state works in AST Walking
       | { ignore: string[]; state: Record<string, any> };
-  },
+  } & { "*"?: (node: NodeType) => boolean | void },
   state: Record<string, any> = {},
   parent: NodeType | null = null,
 ): void | typeof States.EXIT {
@@ -379,6 +380,13 @@ export function walk(
       state = result.state;
     } else if (typeof result === "object") {
       state = result;
+    }
+  }
+
+  if ("*" in visitor) {
+    const result = visitor["*"]!(node);
+    if (result === false) {
+      return;
     }
   }
 

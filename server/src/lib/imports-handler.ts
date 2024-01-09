@@ -1,4 +1,4 @@
-import type { ImportDeclaration } from "@swc/wasm-web";
+import type { ImportDeclaration } from "@swc/types";
 import StateManager from "./state-manager";
 
 export function handleImports(node: ImportDeclaration, state: StateManager) {

@@ -35,12 +35,12 @@
       "title": "StyleX Intellisense",
       "properties": {
         "stylex.includedLanguages": {
-          "type": "array",
-          "items": {
+          "type": "object",
+          "additionalProperties": {
             "type": "string"
           },
-          "default": [],
-          "markdownDescription": "Enables the StyleX language server to provide intellisense on unsupported languages (must have a TypeScript parsable syntax)."
+          "default": {},
+          "markdownDescription": "Enable features in languages that are not supported by default. Add a mapping here between the new language and an already supported language.\n E.g.: `{\"plaintext\": \"javascriptreact\"}`"
         },
         "stylex.trace.server": {
           "scope": "window",

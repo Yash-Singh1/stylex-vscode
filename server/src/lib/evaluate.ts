@@ -4,8 +4,9 @@ import type {
   Expression,
   Span,
   TemplateElement,
-} from "@swc/wasm-web";
+} from "@swc/types";
 import StateManager from "./state-manager";
+import { NodeType } from "./walk";
 
 type ResultType =
   | {
@@ -68,7 +69,7 @@ function processArrayExpression(
 }
 
 export function evaluate(
-  node: Expression | ComputedPropName | TemplateElement,
+  node: Expression | ComputedPropName | TemplateElement | NodeType,
   stateManager: StateManager,
 ): ResultType {
   switch (node.type) {
@@ -363,6 +364,9 @@ export function evaluate(
       let quasisIndex = 0;
       let expressionsIndex = 0;
       let currentQuasi = true;
+      if (!("expressions" in node) || !("quasis" in node))
+        return { value: undefined, static: false };
+
       while (
         currentQuasi
           ? quasisIndex < node.quasis.length
@@ -480,6 +484,7 @@ export function evaluate(
       );
 
     default:
+      return { value: undefined, static: false };
       throw new Error("Unknown expression");
   }
 
