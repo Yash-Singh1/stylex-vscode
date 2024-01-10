@@ -204,6 +204,55 @@ let hasDiagnosticRelatedInformationCapability = false;
     return languageId;
   }
 
+  function calculateStartOffset(textDocument: TextDocument) {
+    let startOffset = 0;
+    let line = textDocument.getText({
+      start: { line: 0, character: 0 },
+      end: { line: 1, character: 0 },
+    });
+    let currentLine = 1;
+    let multilineComment = false;
+    while (
+      !line.trim() ||
+      line.trim().startsWith("//") ||
+      line.trim().startsWith("/*") ||
+      multilineComment
+    ) {
+      let changes = true;
+      while (changes) {
+        changes = false;
+        if (!multilineComment && line.trim().startsWith("/*")) {
+          multilineComment = true;
+          changes = true;
+        }
+
+        const multilinecommentEnd = line.trim().indexOf("*/");
+        if (multilineComment && multilinecommentEnd !== -1) {
+          startOffset += multilinecommentEnd + 2;
+          multilineComment = false;
+          line = line.slice(multilinecommentEnd + 2);
+          changes = true;
+        }
+      }
+
+      if (!line.trim() || line.trim().startsWith("//")) {
+        console.log(line, startOffset);
+        startOffset += line.length;
+        line = textDocument.getText({
+          start: { line: currentLine, character: 0 },
+          end: { line: currentLine + 1, character: 0 },
+        });
+        ++currentLine;
+      } else {
+        break;
+      }
+    }
+
+    startOffset += /^\s*/.exec(line)![0].length;
+
+    return startOffset;
+  }
+
   // We might want to limit this to color restricted properties to allow further reliability (idk)
   // @see https://github.com/microsoft/vscode-css-languageservice/blob/main/src/data/webCustomData.ts
   connection.onDocumentColor(async (params: DocumentColorParams) => {
@@ -234,6 +283,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 
     const stateManager = new StateManager();
 
+    const startOffset = calculateStartOffset(textDocument);
     let moduleStart = 0;
 
     function handleStringLiteral(
@@ -260,8 +310,12 @@ let hasDiagnosticRelatedInformationCapability = false;
       return {
         range: {
           // Offsets to keep colors inside the quotes
-          start: textDocument.positionAt(node.span.start - moduleStart + 1),
-          end: textDocument.positionAt(node.span.end - moduleStart - 1),
+          start: textDocument.positionAt(
+            node.span.start - moduleStart + startOffset + 1,
+          ),
+          end: textDocument.positionAt(
+            node.span.end - moduleStart + startOffset - 1,
+          ),
         },
         color: culoriColorToVscodeColor(color),
       };
@@ -454,6 +508,8 @@ let hasDiagnosticRelatedInformationCapability = false;
         }
       }
     }
+
+    const startOffset = calculateStartOffset(document);
 
     let parseResult;
     try {
