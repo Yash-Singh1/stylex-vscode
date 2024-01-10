@@ -219,24 +219,33 @@ let hasDiagnosticRelatedInformationCapability = false;
       multilineComment
     ) {
       let changes = true;
+      let multilineCommentWasThere = false;
       while (changes) {
         changes = false;
         if (!multilineComment && line.trim().startsWith("/*")) {
           multilineComment = true;
+          startOffset += line.indexOf("/*") + 2;
+          line = line.trim().slice(2);
           changes = true;
+          multilineCommentWasThere = true;
         }
 
-        const multilinecommentEnd = line.trim().indexOf("*/");
-        if (multilineComment && multilinecommentEnd !== -1) {
-          startOffset += multilinecommentEnd + 2;
+        const multilineCommentEnd = line.indexOf("*/");
+        if (multilineComment && multilineCommentEnd !== -1) {
+          startOffset += multilineCommentEnd + 2;
           multilineComment = false;
-          line = line.slice(multilinecommentEnd + 2);
+          line = line.slice(multilineCommentEnd + 2);
           changes = true;
+          multilineCommentWasThere = true;
+          --startOffset;
         }
       }
 
-      if (!line.trim() || line.trim().startsWith("//")) {
-        console.log(line, startOffset);
+      if (multilineCommentWasThere) {
+        ++startOffset;
+      }
+
+      if (!line.trim() || line.trim().startsWith("//") || multilineComment) {
         startOffset += line.length;
         line = textDocument.getText({
           start: { line: currentLine, character: 0 },
@@ -537,7 +546,7 @@ let hasDiagnosticRelatedInformationCapability = false;
       parseResult,
       {
         Module(node) {
-          moduleStart = node.span.start;
+          moduleStart = node.span.start + startOffset;
           stateManager.pushConstantScope();
         },
 
