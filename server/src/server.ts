@@ -546,7 +546,7 @@ let hasDiagnosticRelatedInformationCapability = false;
       parseResult,
       {
         Module(node) {
-          moduleStart = node.span.start + startOffset;
+          moduleStart = node.span.start - startOffset;
           stateManager.pushConstantScope();
         },
 
