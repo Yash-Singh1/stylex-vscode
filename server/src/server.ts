@@ -147,9 +147,12 @@ let hasDiagnosticRelatedInformationCapability = false;
     return result;
   }
 
-  // Only keep settings for open documents
+  const colorCache = new Map<string, ColorInformation[]>();
+
+  // Clear cache for documents that closed
   documents.onDidClose((e) => {
     documentSettings.delete(e.document.uri);
+    colorCache.delete(e.document.uri);
   });
 
   connection.onDidOpenTextDocument((_change) => {
@@ -190,8 +193,6 @@ let hasDiagnosticRelatedInformationCapability = false;
     },
   );
 
-  const colorCache = new Map<string, ColorInformation["color"]>();
-
   async function getLanguageId(uri: string, document: TextDocument) {
     const { includedLanguages } = await getDocumentSettings(uri);
 
@@ -216,15 +217,11 @@ let hasDiagnosticRelatedInformationCapability = false;
 
     let parseResult;
     try {
-      parseResult = init.parseSync(text, {
-        ...(languageId.startsWith("typescript")
-          ? { syntax: "typescript", tsx: languageId.endsWith("react") }
-          : {
-              syntax: "ecmascript",
-              jsx: languageId.endsWith("react"),
-            }),
+      parseResult = await init.parse(text, {
+        syntax: "typescript",
+        tsx: languageId.endsWith("react"),
         target: "es2022",
-        comments: false,
+        comments: true,
         decorators: true,
         dynamicImport: true,
       });
@@ -251,6 +248,14 @@ let hasDiagnosticRelatedInformationCapability = false;
       ) {
         return false;
       }
+
+      console.log(
+        "Found color",
+        color,
+        node.value,
+        node.span.start,
+        moduleStart,
+      );
 
       return {
         range: {
@@ -308,8 +313,10 @@ let hasDiagnosticRelatedInformationCapability = false;
           if (
             state &&
             state.callInside != null &&
-            node.value.type !== "ObjectExpression" &&
-            !("body" in node.value)
+            (node.value.type === "StringLiteral" ||
+              node.value.type === "CallExpression" ||
+              node.value.type === "ArrayExpression" ||
+              node.value.type === "TemplateLiteral")
           ) {
             const resultingValue = evaluate(node.value, stateManager);
 
@@ -342,29 +349,50 @@ let hasDiagnosticRelatedInformationCapability = false;
       { callInside: null },
     );
 
-    colorCache.clear();
-    colors.forEach((color) => {
-      colorCache.set(
-        `${params.textDocument.uri}:${color.range.start.line}:${color.range.start.character}:${color.range.end.line}:${color.range.end.character}`,
-        color.color,
-      );
-    });
+    colorCache.delete(params.textDocument.uri);
+    colorCache.set(params.textDocument.uri, colors);
 
     return colors;
   });
 
   connection.onColorPresentation((params) => {
-    const prevColor = colorCache.get(
-      `${params.textDocument.uri}:${params.range.start.line}:${params.range.start.character}:${params.range.end.line}:${params.range.end.character}`,
-    );
+    const prevColors = colorCache.get(params.textDocument.uri) || [];
+
+    // Binary Search for color we are looking for
+    let left = 0,
+      right = prevColors.length - 1,
+      ans = -1;
+
+    while (left <= right) {
+      const mid = Math.floor((left + right) / 2);
+
+      if (
+        prevColors[mid].range.start.line < params.range.start.line ||
+        (prevColors[mid].range.start.line === params.range.start.line &&
+          prevColors[mid].range.start.character < params.range.start.character)
+      ) {
+        left = mid + 1;
+      } else if (
+        prevColors[mid].range.start.line > params.range.start.line ||
+        (prevColors[mid].range.start.line === params.range.start.line &&
+          prevColors[mid].range.start.character > params.range.start.character)
+      ) {
+        right = mid - 1;
+      } else {
+        ans = mid;
+        break;
+      }
+    }
+
+    const prevColor = ans >= 0 ? prevColors[ans] : undefined;
 
     const colorValue = prevColor
       ? ({
           mode: "rgb",
-          r: prevColor.red,
-          g: prevColor.green,
-          b: prevColor.blue,
-          alpha: prevColor.alpha,
+          r: prevColor.color.red,
+          g: prevColor.color.green,
+          b: prevColor.color.blue,
+          alpha: prevColor.color.alpha,
         } satisfies Color)
       : undefined;
 
@@ -429,15 +457,11 @@ let hasDiagnosticRelatedInformationCapability = false;
 
     let parseResult;
     try {
-      parseResult = init.parseSync(text, {
-        ...(languageId.startsWith("typescript")
-          ? { syntax: "typescript", tsx: languageId.endsWith("react") }
-          : {
-              syntax: "ecmascript",
-              jsx: languageId.endsWith("react"),
-            }),
+      parseResult = await init.parse(text, {
+        syntax: "typescript",
+        tsx: languageId.endsWith("react"),
         target: "es2022",
-        comments: false,
+        comments: true,
         decorators: true,
         dynamicImport: true,
       });

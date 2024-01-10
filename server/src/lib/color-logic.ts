@@ -3,7 +3,6 @@
 import * as culori from "culori";
 import * as namedColors from "color-name";
 import type { Color } from "vscode-languageserver";
-import { StringLiteral } from "@swc/wasm-web";
 
 export type KeywordColor = "transparent" | "currentColor";
 
