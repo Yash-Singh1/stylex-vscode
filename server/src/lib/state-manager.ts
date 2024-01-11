@@ -4,6 +4,7 @@ export default class StateManager {
   private localIdentifierMap: Map<string, string> = new Map();
   private constantScopeStack: Map<string, any>[] = [];
   private variableToScopeMap = new Map<string, number[]>();
+  private variableGroupMap = new Map<string, string>();
 
   constructor() {
     // Default stylex identifier, configurable in the future

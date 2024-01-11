@@ -14,5 +14,4 @@
 - Add more concrete documentation
 - More insightful logging
 - Better support for dynamic styles
-- Support CommonJS
 - Move away from swc due to offsets breaking

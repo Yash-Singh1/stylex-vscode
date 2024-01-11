@@ -29,7 +29,7 @@ import { type Color, formatHex8, formatRgb, formatHsl } from "culori";
 import type { Identifier, StringLiteral } from "@swc/types";
 import { evaluate } from "./lib/evaluate";
 import StateManager from "./lib/state-manager";
-import { handleImports } from "./lib/imports-handler";
+import { handleImports, handleRequires } from "./lib/imports-handler";
 import dashify from "@stylexjs/shared/lib/utils/dashify";
 import transformValue from "@stylexjs/shared/lib/transform-value";
 import stylexBabelPlugin from "@stylexjs/babel-plugin";
@@ -343,6 +343,12 @@ let hasDiagnosticRelatedInformationCapability = false;
           return false;
         },
 
+        VariableDeclaration(node) {
+          for (const declaration of node.declarations) {
+            handleRequires(declaration, stateManager);
+          }
+        },
+
         CallExpression(node) {
           let verifiedImport: string | undefined;
 
@@ -576,9 +582,11 @@ let hasDiagnosticRelatedInformationCapability = false;
           stateManager.popConstantScope();
         },
 
-        VariableDeclaration(node, state) {
+        VariableDeclaration(node) {
           if (node.kind === "const") {
             for (const declaration of node.declarations) {
+              handleRequires(declaration, stateManager);
+
               // TODO: Support more static things for constants
               if (
                 declaration.init &&

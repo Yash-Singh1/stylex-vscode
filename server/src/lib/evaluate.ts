@@ -383,9 +383,12 @@ export function evaluate(
             node.expressions[expressionsIndex],
             stateManager,
           );
-          if (!result.static || "id" in result)
-            return { value: undefined, static: false };
-          values.push(result.value);
+          if (!result.static) return { value: undefined, static: false };
+          if ("id" in result) {
+            values.push(`var(--${result.id})`);
+          } else {
+            values.push(result.value);
+          }
           ++expressionsIndex;
         }
         currentQuasi = !currentQuasi;
