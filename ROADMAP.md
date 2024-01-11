@@ -1,17 +1,23 @@
 # Roadmap
 
+## Users
+
+- Add configuration options for ignoring larger files and detecting StyleX codebases
+- Add more concrete documentation
 - Support `@stylexjs/open-props` for document colors
-- Performance Improvements
-  - There is a lot of potential for backtracking and caching
+- Better support for dynamic styles
+- Explore strategies on handling larger files for document colors
+- Resolve imports for computed properties that are constants
 - Document colors on `StyleXStyles` and `StaticStyles`
+
+## Tech Debt
+
+- Performance Improvements -- caching
 - Use CSS Language Service utilities for auto-completion
   - Might need to figure out how to filter out typed styles (e.g. `StyleXStyles` and `StaticStyles`)
-- Resolve imports for computed properties that are constants
 - Unit testing for AST Utilities
 - E2E tests for extension itself
 - Move to monorepo
 - Use pnpm as primary package manager
-- Add more concrete documentation
 - More insightful logging
-- Better support for dynamic styles
 - Move away from swc due to offsets breaking
