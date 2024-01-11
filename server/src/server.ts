@@ -794,7 +794,11 @@ let hasDiagnosticRelatedInformationCapability = false;
                   );
                 } else if (typeof staticValue.value === "string") {
                   cssLines.push(
-                    `${indentation}${dashifyPropertyKey}: ${staticValue.value};`,
+                    `${indentation}${dashifyPropertyKey}: ${transformValueFn(
+                      propertyName,
+                      staticValue.value,
+                      stylexConfig,
+                    )};`,
                   );
                 } else if (Array.isArray(staticValue.value)) {
                   for (const element of staticValue.value) {
