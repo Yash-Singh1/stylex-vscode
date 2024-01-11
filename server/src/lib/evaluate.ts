@@ -398,7 +398,7 @@ export function evaluate(
     }
 
     case "TemplateElement":
-      return { value: node.raw, static: true, span: node.span };
+      return { value: node.cooked || node.raw, static: true, span: node.span };
 
     case "NewExpression":
       return { value: undefined, static: false };

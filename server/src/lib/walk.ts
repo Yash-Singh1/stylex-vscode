@@ -349,28 +349,31 @@ export const States = {
 
 type OnlyThat<T, U> = T extends U ? T : never;
 
-export function walk(
+type VisitorResult =
+  | void
+  | boolean
+  | Record<string, any>
+  | typeof States.EXIT
+  // TODO: Record<string, any> overrides this, overhaul how state works in AST Walking
+  | { ignore: string[]; state: Record<string, any> };
+
+export async function walk(
   node: NodeType,
   visitor: {
     [Key in NodeType["type"] as Key | `${Key}:exit`]?: (
       node: Extract<NodeType, { type: OnlyThat<Key, NodeType["type"]> }>,
       state?: Record<string, any>,
       parent?: NodeType | null,
-    ) =>
-      | void
-      | boolean
-      | Record<string, any>
-      | typeof States.EXIT
-      // TODO: Record<string, any> overrides this, overhaul how state works in AST Walking
-      | { ignore: string[]; state: Record<string, any> };
+    ) => VisitorResult | Promise<VisitorResult>;
   } & { "*"?: (node: NodeType) => boolean | void },
   state: Record<string, any> = {},
   parent: NodeType | null = null,
-): void | typeof States.EXIT {
+): Promise<void | typeof States.EXIT> {
   let ignore: string[] = [];
 
   if (visitor[node.type]) {
-    const result = visitor[node.type]!(node as any, state, parent);
+    const result = await visitor[node.type]!(node as any, state, parent);
+
     if (result === false) {
       return;
     } else if (result === States.EXIT) {
@@ -409,9 +412,9 @@ export function walk(
           let result;
 
           if ("type" in child) {
-            result = walk(child, visitor, { ...state }, node);
+            result = await walk(child, visitor, { ...state }, node);
           } else if ("expression" in child) {
-            result = walk(child.expression, visitor, { ...state }, node);
+            result = await walk(child.expression, visitor, { ...state }, node);
           }
 
           if (result === States.EXIT) {
@@ -422,7 +425,7 @@ export function walk(
         node[key as keyof typeof node] != null &&
         "type" in (node[key as keyof typeof node] as any)
       ) {
-        const result = walk(
+        const result = await walk(
           node[key as keyof typeof node] as unknown as NodeType,
           visitor,
           { ...state },
@@ -436,7 +439,7 @@ export function walk(
   }
 
   if (`${node.type}:exit` in visitor) {
-    const result = visitor[node.type]!(node as any, state, parent);
+    const result = await visitor[node.type]!(node as any, state, parent);
     if (result === States.EXIT) {
       return States.EXIT;
     }

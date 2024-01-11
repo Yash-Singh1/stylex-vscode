@@ -34,6 +34,8 @@ import dashify from "@stylexjs/shared/lib/utils/dashify";
 import transformValue from "@stylexjs/shared/lib/transform-value";
 import stylexBabelPlugin from "@stylexjs/babel-plugin";
 
+import * as prettier from "prettier";
+
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
@@ -330,7 +332,7 @@ let hasDiagnosticRelatedInformationCapability = false;
       };
     }
 
-    walk(
+    await walk(
       parseResult,
       {
         Module(node) {
@@ -548,7 +550,7 @@ let hasDiagnosticRelatedInformationCapability = false;
     // Resulting hover
     let hover: Hover | undefined = undefined;
 
-    walk(
+    await walk(
       parseResult,
       {
         Module(node) {
@@ -664,7 +666,7 @@ let hasDiagnosticRelatedInformationCapability = false;
           return false;
         },
 
-        KeyValueProperty(node, state) {
+        async KeyValueProperty(node, state) {
           let key: string | undefined;
 
           if (
@@ -874,11 +876,19 @@ let hasDiagnosticRelatedInformationCapability = false;
 
             if (cssLines.length > 2) {
               cssLines = [
-                stylexBabelPlugin.processStylexRules(
-                  [["abcd", { ltr: cssLines.join("\n"), rtl: null }, 3000]],
-                  false,
-                ),
+                (
+                  await prettier.format(
+                    stylexBabelPlugin.processStylexRules(
+                      [["abcd", { ltr: cssLines.join("\n"), rtl: null }, 3000]],
+                      false,
+                    ),
+                    {
+                      parser: "css",
+                    },
+                  )
+                ).trim(),
               ];
+
               hover = {
                 contents: {
                   kind: MarkupKind.Markdown,
