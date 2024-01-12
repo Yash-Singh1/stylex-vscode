@@ -65,6 +65,7 @@ import type {
   TsUnionOrIntersectionType,
   VariableDeclarator,
 } from "@swc/types";
+import type { CancellationToken } from "vscode-languageserver";
 
 export type NodeType =
   | Module
@@ -349,24 +350,45 @@ export const States = {
 
 type OnlyThat<T, U> = T extends U ? T : never;
 
-type VisitorResult =
+type VisitorResult<StateType> =
   | void
   | boolean
-  | Record<string, any>
+  | StateType
   | typeof States.EXIT
-  // TODO: Record<string, any> overrides this, overhaul how state works in AST Walking
-  | { ignore: string[]; state: Record<string, any> };
+  | { ignore: string[]; state: StateType };
 
-export async function walk(
+type VisitorMap<StateType> = {
+  [Key in NodeType["type"] as Key | `${Key}:exit`]?: (
+    node: Extract<NodeType, { type: OnlyThat<Key, NodeType["type"]> }>,
+    state: StateType,
+    parent?: NodeType | null,
+  ) => VisitorResult<StateType> | Promise<VisitorResult<StateType>>;
+} & { "*"?: (node: NodeType) => boolean | void };
+
+export function walk<StateType>(
   node: NodeType,
-  visitor: {
-    [Key in NodeType["type"] as Key | `${Key}:exit`]?: (
-      node: Extract<NodeType, { type: OnlyThat<Key, NodeType["type"]> }>,
-      state?: Record<string, any>,
-      parent?: NodeType | null,
-    ) => VisitorResult | Promise<VisitorResult>;
-  } & { "*"?: (node: NodeType) => boolean | void },
-  state: Record<string, any> = {},
+  visitor: VisitorMap<StateType>,
+  token: CancellationToken,
+  state: StateType,
+  parent: NodeType | null = null,
+): Promise<void | typeof States.EXIT> {
+  return new Promise((resolve, reject) => {
+    token.onCancellationRequested(() => {
+      resolve(States.EXIT);
+    });
+
+    if (token.isCancellationRequested) {
+      resolve(States.EXIT);
+    }
+
+    _walk<StateType>(node, visitor, state, parent).then(resolve).catch(reject);
+  });
+}
+
+export async function _walk<StateType>(
+  node: NodeType,
+  visitor: VisitorMap<StateType>,
+  state: StateType,
   parent: NodeType | null = null,
 ): Promise<void | typeof States.EXIT> {
   let ignore: string[] = [];
@@ -412,9 +434,14 @@ export async function walk(
           let result;
 
           if ("type" in child) {
-            result = await walk(child, visitor, { ...state }, node);
+            result = await _walk<StateType>(child, visitor, { ...state }, node);
           } else if ("expression" in child) {
-            result = await walk(child.expression, visitor, { ...state }, node);
+            result = await _walk<StateType>(
+              child.expression,
+              visitor,
+              { ...state },
+              node,
+            );
           }
 
           if (result === States.EXIT) {
@@ -425,7 +452,7 @@ export async function walk(
         node[key as keyof typeof node] != null &&
         "type" in (node[key as keyof typeof node] as any)
       ) {
-        const result = await walk(
+        const result = await _walk<StateType>(
           node[key as keyof typeof node] as unknown as NodeType,
           visitor,
           { ...state },

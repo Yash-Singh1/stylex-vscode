@@ -1,9 +1,18 @@
 import type { ImportDeclaration, VariableDeclarator } from "@swc/types";
 import StateManager from "./state-manager";
+import type { UserConfiguration } from "./settings";
 
-export function handleImports(node: ImportDeclaration, state: StateManager) {
-  // TODO: Configuration option for stylex package name or scan for it
-  if (node.source.value !== "@stylexjs/stylex") {
+export function handleImports(
+  node: ImportDeclaration,
+  state: StateManager,
+  config: UserConfiguration,
+) {
+  if (
+    !(
+      node.source.value === "@stylexjs/stylex" ||
+      config.aliasModuleNames.includes(node.source.value)
+    )
+  ) {
     return;
   }
 
@@ -31,7 +40,11 @@ export function handleImports(node: ImportDeclaration, state: StateManager) {
   }
 }
 
-export function handleRequires(node: VariableDeclarator, state: StateManager) {
+export function handleRequires(
+  node: VariableDeclarator,
+  state: StateManager,
+  config: UserConfiguration,
+) {
   if (
     node.init?.type !== "CallExpression" ||
     node.init.callee.type !== "Identifier" ||
@@ -41,7 +54,12 @@ export function handleRequires(node: VariableDeclarator, state: StateManager) {
     return;
   }
 
-  if (node.init.arguments[0].expression.value !== "@stylexjs/stylex") {
+  if (
+    !(
+      node.init.arguments[0].expression.value === "@stylexjs/stylex" ||
+      config.aliasModuleNames.includes(node.init.arguments[0].expression.value)
+    )
+  ) {
     return;
   }
 

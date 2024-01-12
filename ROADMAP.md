@@ -4,6 +4,7 @@
 
 - Add configuration options for ignoring larger files and detecting StyleX codebases
 - Streaming for large files
+- Cancellation tokens
 - Add more concrete documentation
 - Support `@stylexjs/open-props` for document colors
 - Better support for dynamic styles

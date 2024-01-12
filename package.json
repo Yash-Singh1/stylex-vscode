@@ -42,6 +42,14 @@
           "default": {},
           "markdownDescription": "Enable features in languages that are not supported by default. Add a mapping here between the new language and an already supported language.\n E.g.: `{\"plaintext\": \"javascriptreact\"}`"
         },
+        "stylex.aliasModuleNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "List of custom module names that should be considered as the StyleX package for detecting StyleX workspaces and imports. Default is just `[\"@stylexjs/stylex\"]`."
+        },
         "stylex.trace.server": {
           "scope": "window",
           "type": "string",

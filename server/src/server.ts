@@ -35,6 +35,8 @@ import transformValue from "@stylexjs/shared/lib/transform-value";
 import stylexBabelPlugin from "@stylexjs/babel-plugin";
 
 import * as prettier from "prettier";
+import { calculateStartOffset, parse } from "./lib/parser";
+import { type UserConfiguration } from "./lib/settings";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -108,15 +110,13 @@ let hasDiagnosticRelatedInformationCapability = false;
       });
     }
   });
-  interface UserConfiguration {
-    includedLanguages: Record<string, string>;
-  }
 
   // The global settings, used when the `workspace/configuration` request is not supported by the client.
   // Please note that this is not the case when using this server with the client provided in this example
   // but could happen with other clients.
   const defaultSettings = {
     includedLanguages: {},
+    aliasModuleNames: [],
   } satisfies UserConfiguration;
   let globalSettings: UserConfiguration = defaultSettings;
 
@@ -138,14 +138,17 @@ let hasDiagnosticRelatedInformationCapability = false;
     if (!hasConfigurationCapability) {
       return Promise.resolve(globalSettings);
     }
+
     let result = documentSettings.get(resource);
     if (!result) {
       result = connection.workspace.getConfiguration({
         scopeUri: resource,
         section: "stylex",
       });
+
       documentSettings.set(resource, result);
     }
+
     return result;
   }
 
@@ -206,70 +209,13 @@ let hasDiagnosticRelatedInformationCapability = false;
     return languageId;
   }
 
-  function calculateStartOffset(textDocument: TextDocument) {
-    let startOffset = 0;
-    let line = textDocument.getText({
-      start: { line: 0, character: 0 },
-      end: { line: 1, character: 0 },
-    });
-    let currentLine = 1;
-    let multilineComment = false;
-    while (
-      !line.trim() ||
-      line.trim().startsWith("//") ||
-      line.trim().startsWith("/*") ||
-      multilineComment
-    ) {
-      let changes = true;
-      let multilineCommentWasThere = false;
-      while (changes) {
-        changes = false;
-        if (!multilineComment && line.trim().startsWith("/*")) {
-          multilineComment = true;
-          startOffset += line.indexOf("/*") + 2;
-          line = line.trim().slice(2);
-          changes = true;
-          multilineCommentWasThere = true;
-        }
-
-        const multilineCommentEnd = line.indexOf("*/");
-        if (multilineComment && multilineCommentEnd !== -1) {
-          startOffset += multilineCommentEnd + 2;
-          multilineComment = false;
-          line = line.slice(multilineCommentEnd + 2);
-          changes = true;
-          multilineCommentWasThere = true;
-          --startOffset;
-        }
-      }
-
-      if (multilineCommentWasThere) {
-        ++startOffset;
-      }
-
-      if (!line.trim() || line.trim().startsWith("//") || multilineComment) {
-        startOffset += line.length;
-        line = textDocument.getText({
-          start: { line: currentLine, character: 0 },
-          end: { line: currentLine + 1, character: 0 },
-        });
-        ++currentLine;
-      } else {
-        break;
-      }
-    }
-
-    startOffset += /^\s*/.exec(line)![0].length;
-
-    return startOffset;
-  }
-
   // We might want to limit this to color restricted properties to allow further reliability (idk)
   // @see https://github.com/microsoft/vscode-css-languageservice/blob/main/src/data/webCustomData.ts
-  connection.onDocumentColor(async (params: DocumentColorParams) => {
+  connection.onDocumentColor(async (params: DocumentColorParams, token) => {
     const textDocument = documents.get(params.textDocument.uri)!;
     const text = textDocument.getText();
 
+    const settings = await getDocumentSettings(params.textDocument.uri);
     const languageId = await getLanguageId(
       params.textDocument.uri,
       textDocument,
@@ -277,14 +223,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 
     let parseResult;
     try {
-      parseResult = await init.parse(text, {
-        syntax: "typescript",
-        tsx: languageId.endsWith("react"),
-        target: "es2022",
-        comments: true,
-        decorators: true,
-        dynamicImport: true,
-      });
+      parseResult = await parse({ source: text, languageId, parser: init });
     } catch (e) {
       console.log(e);
       return [];
@@ -332,7 +271,7 @@ let hasDiagnosticRelatedInformationCapability = false;
       };
     }
 
-    await walk(
+    await walk<{ callInside: string | null | undefined }>(
       parseResult,
       {
         Module(node) {
@@ -340,14 +279,14 @@ let hasDiagnosticRelatedInformationCapability = false;
         },
 
         ImportDeclaration(node) {
-          handleImports(node, stateManager);
+          handleImports(node, stateManager, settings);
 
           return false;
         },
 
         VariableDeclaration(node) {
           for (const declaration of node.declarations) {
-            handleRequires(declaration, stateManager);
+            handleRequires(declaration, stateManager, settings);
           }
         },
 
@@ -417,6 +356,7 @@ let hasDiagnosticRelatedInformationCapability = false;
           }
         },
       },
+      token,
       { callInside: null },
     );
 
@@ -498,10 +438,11 @@ let hasDiagnosticRelatedInformationCapability = false;
 
   const hoverCache = new Map<string, Required<Hover>[]>();
 
-  connection.onHover(async (params) => {
+  connection.onHover(async (params, token) => {
     const document = documents.get(params.textDocument.uri)!;
     const text = document.getText();
 
+    const settings = await getDocumentSettings(params.textDocument.uri);
     const languageId = await getLanguageId(params.textDocument.uri, document);
 
     // TODO: Actually get caching working
@@ -530,14 +471,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 
     let parseResult;
     try {
-      parseResult = await init.parse(text, {
-        syntax: "typescript",
-        tsx: languageId.endsWith("react"),
-        target: "es2022",
-        comments: true,
-        decorators: true,
-        dynamicImport: true,
-      });
+      parseResult = await parse({ source: text, languageId, parser: init });
     } catch (e) {
       console.log(e);
       return undefined;
@@ -550,7 +484,11 @@ let hasDiagnosticRelatedInformationCapability = false;
     // Resulting hover
     let hover: Hover | undefined = undefined;
 
-    await walk(
+    await walk<{
+      parentClass: string[];
+      callInside: string | null | undefined;
+      callerIdentifier: string | null | undefined;
+    }>(
       parseResult,
       {
         Module(node) {
@@ -587,7 +525,7 @@ let hasDiagnosticRelatedInformationCapability = false;
         VariableDeclaration(node) {
           if (node.kind === "const") {
             for (const declaration of node.declarations) {
-              handleRequires(declaration, stateManager);
+              handleRequires(declaration, stateManager, settings);
 
               // TODO: Support more static things for constants
               if (
@@ -605,7 +543,7 @@ let hasDiagnosticRelatedInformationCapability = false;
         },
 
         ImportDeclaration(node) {
-          handleImports(node, stateManager);
+          handleImports(node, stateManager, settings);
 
           return false;
         },
@@ -908,7 +846,8 @@ let hasDiagnosticRelatedInformationCapability = false;
           return state;
         },
       },
-      { parentClass: [], callInside: null },
+      token,
+      { parentClass: [], callInside: null, callerIdentifier: undefined },
     );
 
     return hover;
