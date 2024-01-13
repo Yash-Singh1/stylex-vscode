@@ -9,7 +9,6 @@ import {
   TextDocumentPositionParams,
   TextDocumentSyncKind,
   InitializeResult,
-  DocumentColorParams,
   ColorInformation,
   Hover,
   MarkupKind,
@@ -216,7 +215,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 
   // We might want to limit this to color restricted properties to allow further reliability (idk)
   // @see https://github.com/microsoft/vscode-css-languageservice/blob/main/src/data/webCustomData.ts
-  connection.onDocumentColor(async (params: DocumentColorParams, token) => {
+  connection.onDocumentColor(async (params, token) => {
     const textDocument = documents.get(params.textDocument.uri)!;
     const text = textDocument.getText();
 

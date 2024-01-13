@@ -4,7 +4,6 @@
 
 - Add configuration options for ignoring larger files and detecting StyleX codebases
 - Use CSS Language Service utilities for auto-completion
-- Streaming for large files
 - Add more concrete documentation
 - Support `@stylexjs/open-props` for document colors
 - Better support for dynamic styles
