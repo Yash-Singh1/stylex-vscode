@@ -364,13 +364,13 @@ export function evaluate(
       let quasisIndex = 0;
       let expressionsIndex = 0;
       let currentQuasi = true;
-      if (!("expressions" in node) || !("quasis" in node))
-        return { value: undefined, static: false };
+      const expressions = "expressions" in node ? node.expressions : [];
+      if (!("quasis" in node)) return { value: undefined, static: false };
 
       while (
         currentQuasi
           ? quasisIndex < node.quasis.length
-          : expressionsIndex < node.expressions.length
+          : expressionsIndex < expressions.length
       ) {
         if (currentQuasi) {
           const result = evaluate(node.quasis[quasisIndex], stateManager);
@@ -379,10 +379,7 @@ export function evaluate(
           values.push(result.value);
           ++quasisIndex;
         } else {
-          const result = evaluate(
-            node.expressions[expressionsIndex],
-            stateManager,
-          );
+          const result = evaluate(expressions[expressionsIndex], stateManager);
           if (!result.static) return { value: undefined, static: false };
           if ("id" in result) {
             values.push(`var(--${result.id})`);

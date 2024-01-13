@@ -26,7 +26,12 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { States, walk } from "./lib/walk";
 import { culoriColorToVscodeColor, getColorFromValue } from "./lib/color-logic";
 import { type Color, formatHex8, formatRgb, formatHsl } from "culori";
-import type { Identifier, StringLiteral } from "@swc/types";
+import type {
+  Identifier,
+  StringLiteral,
+  TsLiteralType,
+  TsUnionType,
+} from "@swc/types";
 import { evaluate } from "./lib/evaluate";
 import StateManager from "./lib/state-manager";
 import { handleImports, handleRequires } from "./lib/imports-handler";
@@ -271,6 +276,43 @@ let hasDiagnosticRelatedInformationCapability = false;
       };
     }
 
+    function handleTypeStrings(typeNode: TsUnionType | TsLiteralType) {
+      if (typeNode.type === "TsUnionType") {
+        for (const unionValue of typeNode.types) {
+          if (unionValue.type === "TsLiteralType") {
+            handleTypeStrings(unionValue);
+          }
+        }
+      } else {
+        if (
+          typeNode.literal.type === "StringLiteral" ||
+          typeNode.literal.type === "TemplateLiteral"
+        ) {
+          const resultingValue = evaluate(typeNode.literal, stateManager);
+
+          if (
+            resultingValue.static &&
+            "value" in resultingValue &&
+            typeof resultingValue.value === "string"
+          ) {
+            const color = handleStringLiteral({
+              value: resultingValue.value,
+              span: resultingValue.span,
+            });
+            if (typeNode.literal.type === "TemplateLiteral") {
+              console.log(
+                "Template literal",
+                typeNode.literal,
+                resultingValue,
+                color,
+              );
+            }
+            if (color) colors.push(color);
+          }
+        }
+      }
+    }
+
     await walk<{ callInside: string | null | undefined }>(
       parseResult,
       {
@@ -287,6 +329,33 @@ let hasDiagnosticRelatedInformationCapability = false;
         VariableDeclaration(node) {
           for (const declaration of node.declarations) {
             handleRequires(declaration, stateManager, settings);
+          }
+        },
+
+        TsTypeReference(node) {
+          if (
+            node.typeName.type === "Identifier" &&
+            ["StyleXStyles", "StaticStyles"].includes(
+              stateManager.verifyNamedImport(node.typeName.value) || "",
+            ) &&
+            node.typeParams
+          ) {
+            node.typeParams.params.forEach((param) => {
+              if (param.type === "TsTypeLiteral") {
+                param.members.forEach((member) => {
+                  if (
+                    member.type === "TsPropertySignature" &&
+                    member.typeAnnotation &&
+                    (member.typeAnnotation.typeAnnotation.type ===
+                      "TsLiteralType" ||
+                      member.typeAnnotation.typeAnnotation.type ===
+                        "TsUnionType")
+                  ) {
+                    handleTypeStrings(member.typeAnnotation.typeAnnotation);
+                  }
+                });
+              }
+            });
           }
         },
 
