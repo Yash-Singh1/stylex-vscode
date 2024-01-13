@@ -1,23 +1,42 @@
-import type { TextDocument } from 'vscode-languageserver-textdocument';
+import type { Module } from "@swc/types";
+import type { CancellationToken } from "vscode-languageserver";
+import type { TextDocument } from "vscode-languageserver-textdocument";
 
 type Parser = typeof import("../../node_modules/@swc/wasm-web");
+
+const PARSE_CANCELLED_MESSAGE = "[INFO] Parse Job Cancelled";
 
 export function parse({
   source,
   languageId,
   parser,
+  token,
 }: {
   source: string;
   languageId: string;
   parser: Parser;
+  token: CancellationToken;
 }) {
-  return parser.parse(source, {
-    syntax: "typescript",
-    tsx: languageId.endsWith("react"),
-    target: "es2022",
-    comments: true,
-    decorators: true,
-    dynamicImport: true,
+  return new Promise<Module>((resolve, reject) => {
+    token.onCancellationRequested(() => {
+      reject(PARSE_CANCELLED_MESSAGE);
+    });
+
+    if (token.isCancellationRequested) {
+      reject(PARSE_CANCELLED_MESSAGE);
+    }
+
+    parser
+      .parse(source, {
+        syntax: "typescript",
+        tsx: languageId.endsWith("react"),
+        target: "es2022",
+        comments: true,
+        decorators: true,
+        dynamicImport: true,
+      })
+      .then((value) => resolve(value))
+      .catch(reject);
   });
 }
 

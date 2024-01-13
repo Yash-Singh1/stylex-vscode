@@ -228,7 +228,12 @@ let hasDiagnosticRelatedInformationCapability = false;
 
     let parseResult;
     try {
-      parseResult = await parse({ source: text, languageId, parser: init });
+      parseResult = await parse({
+        source: text,
+        languageId,
+        parser: init,
+        token,
+      });
     } catch (e) {
       console.log(e);
       return [];
@@ -540,7 +545,12 @@ let hasDiagnosticRelatedInformationCapability = false;
 
     let parseResult;
     try {
-      parseResult = await parse({ source: text, languageId, parser: init });
+      parseResult = await parse({
+        source: text,
+        languageId,
+        parser: init,
+        token,
+      });
     } catch (e) {
       console.log(e);
       return undefined;
