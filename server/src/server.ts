@@ -27,6 +27,7 @@ import { culoriColorToVscodeColor, getColorFromValue } from "./lib/color-logic";
 import { type Color, formatHex8, formatRgb, formatHsl } from "culori";
 import type {
   Identifier,
+  Module,
   StringLiteral,
   TsLiteralType,
   TsUnionType,
@@ -58,6 +59,14 @@ let hasDiagnosticRelatedInformationCapability = false;
   // Import swc and initialize the WASM module
   const init = await import("@swc/wasm-web/wasm-web.js");
   await init.default(wasmBuffer);
+
+  const dashifyFn = (
+    dashify as unknown as typeof import("@stylexjs/shared/lib/utils/dashify")
+  ).default;
+
+  const transformValueFn = (
+    transformValue as unknown as typeof import("@stylexjs/shared/lib/transform-value")
+  ).default;
 
   connection.onInitialize((params: InitializeParams) => {
     const capabilities = params.capabilities;
@@ -157,11 +166,17 @@ let hasDiagnosticRelatedInformationCapability = false;
   }
 
   const colorCache = new Map<string, ColorInformation[]>();
+  const parseCache = new Map<string, Module>();
 
   // Clear cache for documents that closed
   documents.onDidClose((e) => {
     documentSettings.delete(e.document.uri);
     colorCache.delete(e.document.uri);
+    parseCache.delete(e.document.uri);
+  });
+
+  documents.onDidChangeContent((e) => {
+    parseCache.delete(e.document.uri);
   });
 
   connection.onDidOpenTextDocument((_change) => {
@@ -227,12 +242,17 @@ let hasDiagnosticRelatedInformationCapability = false;
 
     let parseResult;
     try {
-      parseResult = await parse({
-        source: text,
-        languageId,
-        parser: init,
-        token,
-      });
+      if (parseCache.has(params.textDocument.uri)) {
+        parseResult = parseCache.get(params.textDocument.uri)!;
+      } else {
+        parseResult = await parse({
+          source: text,
+          languageId,
+          parser: init,
+          token,
+        });
+        parseCache.set(params.textDocument.uri, parseResult);
+      }
     } catch (e) {
       console.log(e);
       return [];
@@ -509,8 +529,6 @@ let hasDiagnosticRelatedInformationCapability = false;
     ];
   });
 
-  const hoverCache = new Map<string, Required<Hover>[]>();
-
   connection.onHover(async (params, token) => {
     const document = documents.get(params.textDocument.uri)!;
     const text = document.getText();
@@ -518,38 +536,21 @@ let hasDiagnosticRelatedInformationCapability = false;
     const settings = await getDocumentSettings(params.textDocument.uri);
     const languageId = await getLanguageId(params.textDocument.uri, document);
 
-    // TODO: Actually get caching working
-    if (hoverCache.has(params.textDocument.uri)) {
-      const styleHovers = hoverCache.get(params.textDocument.uri)!;
-
-      // TODO: Use binary search for perf on large files
-      for (const styleHover of styleHovers) {
-        const start = styleHover.range.start;
-        const end = styleHover.range.end;
-
-        if (
-          params.position.line >= start.line &&
-          (params.position.line !== start.line ||
-            params.position.character >= start.character) &&
-          params.position.line <= end.line &&
-          (params.position.line !== end.line ||
-            params.position.character <= end.character)
-        ) {
-          return styleHover;
-        }
-      }
-    }
-
     const startOffset = calculateStartOffset(document);
 
     let parseResult;
     try {
-      parseResult = await parse({
-        source: text,
-        languageId,
-        parser: init,
-        token,
-      });
+      if (parseCache.has(params.textDocument.uri)) {
+        parseResult = parseCache.get(params.textDocument.uri)!;
+      } else {
+        parseResult = await parse({
+          source: text,
+          languageId,
+          parser: init,
+          token,
+        });
+        parseCache.set(params.textDocument.uri, parseResult);
+      }
     } catch (e) {
       console.log(e);
       return undefined;
@@ -776,14 +777,6 @@ let hasDiagnosticRelatedInformationCapability = false;
                     .reverse()
                     .join("") || "unknown")
                 : classLine[0];
-
-            const dashifyFn = (
-              dashify as unknown as typeof import("@stylexjs/shared/lib/utils/dashify")
-            ).default;
-
-            const transformValueFn = (
-              transformValue as unknown as typeof import("@stylexjs/shared/lib/transform-value")
-            ).default;
 
             const propertyName =
               (state.callInside === "create" || state.callInside === "keyframes"
