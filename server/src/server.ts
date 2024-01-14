@@ -40,7 +40,7 @@ import stylexBabelPlugin from "@stylexjs/babel-plugin";
 
 import * as prettier from "prettier";
 import { calculateStartOffset, parse } from "./lib/parser";
-import { type UserConfiguration } from "./lib/settings";
+import { defaultSettings, type UserConfiguration } from "./lib/settings";
 import { CSSVirtualDocument } from "./lib/virtual-document";
 import { getCSSLanguageService } from "vscode-css-languageservice";
 
@@ -133,14 +133,6 @@ let hasDiagnosticRelatedInformationCapability = false;
   // The global settings, used when the `workspace/configuration` request is not supported by the client.
   // Please note that this is not the case when using this server with the client provided in this example
   // but could happen with other clients.
-  const defaultSettings = {
-    includedLanguages: {},
-    aliasModuleNames: [],
-    hover: true,
-    suggestions: true,
-    colorDecorators: true,
-    useRemForFontSize: false,
-  } satisfies UserConfiguration;
   let globalSettings: UserConfiguration = defaultSettings;
 
   // Cache the settings of all open documents

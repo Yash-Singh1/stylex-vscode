@@ -30,6 +30,9 @@ export default class StateManager implements StateManagerImplementation {
   }
 
   public addNamedImport(localIdentifier: string, importedIdentifier: string) {
+    if (importedIdentifier === "default") {
+      return this.addStylexIdentifier(localIdentifier);
+    }
     if (!this.namedImportMap.has(importedIdentifier)) {
       this.namedImportMap.set(importedIdentifier, new Set());
     }

@@ -8,10 +8,8 @@ export function handleImports(
   config: UserConfiguration,
 ) {
   if (
-    !(
-      node.source.value === "@stylexjs/stylex" ||
-      config.aliasModuleNames.includes(node.source.value)
-    )
+    node.source.value !== "@stylexjs/stylex" &&
+    !config.aliasModuleNames.includes(node.source.value)
   ) {
     return;
   }

@@ -6,3 +6,12 @@ export interface UserConfiguration {
   suggestions: boolean;
   colorDecorators: boolean;
 }
+
+export const defaultSettings = {
+  includedLanguages: {},
+  aliasModuleNames: [],
+  hover: true,
+  suggestions: true,
+  colorDecorators: true,
+  useRemForFontSize: false,
+} satisfies UserConfiguration;
