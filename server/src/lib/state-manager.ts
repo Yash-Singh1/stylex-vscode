@@ -1,10 +1,20 @@
-export default class StateManager {
+interface StateManagerImplementation {
+  addStylexIdentifier(identifier: string): void;
+  verifyStylexIdentifier(identifier: string): boolean;
+  addNamedImport(localIdentifier: string, importedIdentifier: string): void;
+  verifyNamedImport(localIdentifier: string): string | undefined;
+  pushConstantScope(): void;
+  popConstantScope(): void;
+  addConstantToScope(identifier: string, value: any): void;
+  getConstantFromScope(identifier: string): any;
+}
+
+export default class StateManager implements StateManagerImplementation {
   private stylexIdentifier: Set<string> = new Set();
   private namedImportMap: Map<string, Set<string>> = new Map();
   private localIdentifierMap: Map<string, string> = new Map();
   private constantScopeStack: Map<string, any>[] = [];
   private variableToScopeMap = new Map<string, number[]>();
-  private variableGroupMap = new Map<string, string>();
 
   constructor() {
     // Default stylex identifier, configurable in the future

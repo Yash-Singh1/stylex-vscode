@@ -50,6 +50,26 @@
           "default": [],
           "markdownDescription": "List of custom module names that should be considered as the StyleX package for detecting StyleX workspaces and imports. Default is just `[\"@stylexjs/stylex\"]`."
         },
+        "stylex.useRemForFontSize": {
+          "type": "boolean",
+          "default": false,
+          "description": "Should `px` values for fontSize be converted to `rem`? It is considered a best practice to use rem for font sizes to allow users to scale the font size up or down."
+        },
+        "stylex.hover": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable hover support for StyleX classes and keyframes."
+        },
+        "stylex.suggestions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable autocomplete suggestions."
+        },
+        "stylex.colorDecorators": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable whether the editor should render color decorators for styles."
+        },
         "stylex.trace.server": {
           "scope": "window",
           "type": "string",

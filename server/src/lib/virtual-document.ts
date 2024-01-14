@@ -3,7 +3,15 @@
 
 import type { TextDocument } from "vscode-languageserver-textdocument";
 
-export class CSSVirtualDocument {
+interface CSSVirtualDocumentImplementation {
+  createVirtualDocument(key: string, value: string): TextDocument;
+  mapOffsetToVirtualOffset(
+    virtualDocument: TextDocument,
+    offset: number,
+  ): number;
+}
+
+export class CSSVirtualDocument implements CSSVirtualDocumentImplementation {
   private static readonly wrapperPreRoot = ":root{\n";
 
   public constructor() {}

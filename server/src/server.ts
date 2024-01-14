@@ -131,6 +131,10 @@ let hasDiagnosticRelatedInformationCapability = false;
   const defaultSettings = {
     includedLanguages: {},
     aliasModuleNames: [],
+    hover: true,
+    suggestions: true,
+    colorDecorators: true,
+    useRemForFontSize: false,
   } satisfies UserConfiguration;
   let globalSettings: UserConfiguration = defaultSettings;
 
@@ -224,6 +228,8 @@ let hasDiagnosticRelatedInformationCapability = false;
       params.textDocument.uri,
       textDocument,
     );
+
+    if (!settings.suggestions) return null;
 
     let parseResult;
     try {
@@ -484,6 +490,8 @@ let hasDiagnosticRelatedInformationCapability = false;
       params.textDocument.uri,
       textDocument,
     );
+
+    if (!settings.colorDecorators) return null;
 
     let parseResult;
     try {
@@ -773,6 +781,8 @@ let hasDiagnosticRelatedInformationCapability = false;
     const settings = await getDocumentSettings(params.textDocument.uri);
     const languageId = await getLanguageId(params.textDocument.uri, document);
 
+    if (!settings.hover) return null;
+
     const startOffset = calculateStartOffset(document);
 
     let parseResult;
@@ -1039,8 +1049,8 @@ let hasDiagnosticRelatedInformationCapability = false;
               test: false,
               classNamePrefix: "",
               styleResolution: "application-order",
-              useRemForFontSize: false,
-            } as const;
+              useRemForFontSize: settings.useRemForFontSize,
+            } satisfies Parameters<typeof transformValueFn>[2];
 
             if (staticValue.static) {
               if ("value" in staticValue) {
