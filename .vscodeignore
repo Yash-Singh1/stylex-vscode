@@ -5,6 +5,7 @@
 **/tsconfig.json
 **/tsconfig.base.json
 CONTRIBUTING.md
+ROADMAP.md
 .travis.yml
 node_modules/**
 client/node_modules/**
@@ -22,6 +23,7 @@ server/node_modules/**
 !assets/**
 *.vsix
 scripts/
+cdn/
 tsup.config.ts
 .prettierrc
 .eslintignore

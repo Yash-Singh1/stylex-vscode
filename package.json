@@ -4,7 +4,7 @@
   "description": "Intellisense for StyleX inside Visual Studio Code",
   "author": "Yash Singh",
   "license": "MIT",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "icon": "assets/stylexlogo.png",
   "repository": {
     "type": "git",
@@ -93,7 +93,7 @@
     "lint": "eslint ./client/src ./server/src --ext .ts,.tsx && prettier --check \"**/*.{ts,tsx,js,json,md}\"",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
     "test": "sh ./scripts/e2e.sh",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc -p ./client --noEmit && tsc -p ./server --noEmit && tsc -p . --noEmit",
     "code-style": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
   },
   "devDependencies": {

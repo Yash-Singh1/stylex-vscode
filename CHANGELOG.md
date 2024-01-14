@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.3
+
+- Autocompletion support
+- Format CSS in hovers
+- More configuration options
+  - Alias module names
+  - Configure capabilities
+  - `useRemForFontSize` option
+- Color decorators for generics
+- Use cancellation tokens to abort processing if tab is closed
+- Cache parser values
+- Fix previously broken static evaluation for template literals
+- Use `tsup` for compiling client
+
 ## 0.0.2
 
 - Icon
