@@ -68,6 +68,9 @@ function processArrayExpression(
   return { value: result, static: true, span: node.span } satisfies ResultType;
 }
 
+/**
+ * Evaluates an expression statically and returns the result
+ */
 export function evaluate(
   node: Expression | ComputedPropName | TemplateElement | NodeType,
   stateManager: StateManager,
@@ -93,7 +96,7 @@ export function evaluate(
         return { value: undefined, static: true, span: node.span };
       else {
         return { id: node.value, static: true, span: node.span };
-        // TODO: Expose scope manager
+        // We won't support identifiers here because identifiers usually imply a dynamic value and we don't want to support that
         throw new Error("Identifier not implemented");
       }
     case "ArrayExpression": {
