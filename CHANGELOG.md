@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.4
+
+- Various bug fixes and stability improvement
+
 ## 0.0.3
 
 - Autocompletion support
