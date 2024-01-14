@@ -379,6 +379,7 @@ export function walk<StateType>(
 
     if (token.isCancellationRequested) {
       resolve(States.EXIT);
+      return;
     }
 
     _walk<StateType>(node, visitor, state, parent).then(resolve).catch(reject);
