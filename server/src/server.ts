@@ -954,7 +954,10 @@ let hasDiagnosticRelatedInformationCapability = false;
           }
 
           if (state && key && state.callInside) {
-            if (node.value.type === "ObjectExpression") {
+            if (
+              node.value.type === "ObjectExpression" ||
+              node.value.type === "ArrowFunctionExpression"
+            ) {
               return { ...state, parentClass: [...state.parentClass, key] };
             }
 

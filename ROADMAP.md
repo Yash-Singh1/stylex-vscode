@@ -6,7 +6,6 @@
 - Auto completion for keys (tough to do this because the code will be parsed invalid when the user wants autocomplete)
 - Add more concrete documentation
 - Support `@stylexjs/open-props` for document colors
-- Better support for dynamic styles
 - Explore strategies on handling larger files for document colors
 - Resolve imports for computed properties that are constants
 
