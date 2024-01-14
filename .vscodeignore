@@ -16,6 +16,7 @@ client/node_modules/**
 !client/node_modules/{minimatch,brace-expansion,concat-map,balanced-match}/**
 !client/node_modules/{semver,lru-cache,yallist}/**
 server/node_modules/**
+server/tests/
 !server/node_modules/@stylexjs/**
 !server/node_modules/@swc/**
 !server/node_modules/vscode*/**
