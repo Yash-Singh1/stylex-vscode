@@ -25,3 +25,67 @@ Change values of colors using a color picker.
 Autocomplete styles
 
 ![Autocomplete](./assets/autocomplete.png)
+
+## Configuration
+
+### `stylex.includedLanguages`
+
+Enable features in languages that are not supported by default. Add a mapping here between the new language and an already supported language.
+
+```json
+{
+  "stylex.includedLanguages": {
+    "plaintext": "javascriptreact"
+  }
+}
+```
+
+### `stylex.aliasModuleNames`
+
+List of custom module names that should be considered as the StyleX package for detecting StyleX workspaces and imports.
+
+```json
+{
+  "stylex.aliasModuleNames": ["@my-org/stylex"]
+}
+```
+
+### `stylex.useRemForFontSize`
+
+Should `px` values for fontSize be converted to `rem`? It is considered a best practice to use rem for font sizes to allow users to scale the font size up or down.
+
+```json
+{
+  "stylex.useRemForFontSize": false
+}
+```
+
+### `stylex.hover`
+
+Enable/disable hover support for StyleX classes and keyframes.
+
+```json
+{
+  "stylex.hover": true
+}
+```
+
+### `stylex.suggestions`
+
+Enable/disable autocomplete suggestions.
+
+```json
+{
+  "stylex.suggestions": true
+}
+```
+
+### `stylex.colorDecorators`
+
+Enable/disable whether the editor should render color decorators for styles.
+
+```json
+{
+  "stylex.colorDecorators": true
+}
+```
