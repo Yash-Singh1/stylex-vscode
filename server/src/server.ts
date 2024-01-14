@@ -91,7 +91,7 @@ let hasDiagnosticRelatedInformationCapability = false;
         textDocumentSync: TextDocumentSyncKind.Incremental,
         // Tell the client that this server supports code completion.
         completionProvider: {
-          // triggerCharacters: ['"', "'"],
+          triggerCharacters: ['"', "'"],
         },
         colorProvider: true,
         hoverProvider: true,
@@ -300,7 +300,13 @@ let hasDiagnosticRelatedInformationCapability = false;
               node.callee.property.type === "Identifier" &&
               (verifiedImport = node.callee.property.value)) ||
             (node.callee.type === "Identifier" &&
-              ["create", "createTheme", "defineVars", "keyframes"].includes(
+              [
+                "create",
+                "createTheme",
+                "defineVars",
+                "keyframes",
+                "firstThatWorks",
+              ].includes(
                 (verifiedImport = stateManager.verifyNamedImport(
                   node.callee.value,
                 )) || "",
@@ -328,6 +334,8 @@ let hasDiagnosticRelatedInformationCapability = false;
                   "callee",
                 ],
               };
+            } else if (verifiedImport === "firstThatWorks") {
+              return;
             }
           }
 

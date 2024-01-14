@@ -36,7 +36,7 @@ const styles = stylex2.create({
       ":hover": {
         default: null,
         "@media (hover: hover)": stylex.firstThatWorks(
-          "sticky",
+          "green",
           "-webkit-sticky",
           "fixed",
         ),
