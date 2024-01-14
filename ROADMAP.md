@@ -12,7 +12,6 @@
 ## Tech Debt
 
 - Performance Improvements -- caching
-- Unit testing for AST Utilities
 - E2E tests for extension itself
 - Move to monorepo
 - Use pnpm as primary package manager
