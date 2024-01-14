@@ -1,6 +1,6 @@
 # StyleX Intellisense
 
-StyleX Intellisense enhances your StyleX development experience by providing advanced features such as autocomplete (coming soon!), hover previews, and color information.
+StyleX Intellisense enhances your StyleX development experience by providing advanced features such as autocomplete, hover previews, and color information.
 
 ## Installation
 
@@ -22,4 +22,6 @@ Change values of colors using a color picker.
 
 ### Auto Complete
 
-Coming Soon!
+Autocomplete styles
+
+![Autocomplete](./assets/autocomplete.png)

@@ -17,6 +17,8 @@ client/node_modules/**
 server/node_modules/**
 !server/node_modules/@stylexjs/**
 !server/node_modules/@swc/**
+!server/node_modules/vscode*/**
+!server/node_modules/prettier/**
 !assets/**
 *.vsix
 scripts/

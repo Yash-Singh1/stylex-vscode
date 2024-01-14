@@ -4,14 +4,12 @@ import {
   ProposedFeatures,
   InitializeParams,
   DidChangeConfigurationNotification,
-  CompletionItem,
-  CompletionItemKind,
-  TextDocumentPositionParams,
   TextDocumentSyncKind,
   InitializeResult,
   ColorInformation,
   Hover,
   MarkupKind,
+  CompletionItem,
 } from "vscode-languageserver/node";
 
 import { readFileSync } from "node:fs";
@@ -27,6 +25,7 @@ import { culoriColorToVscodeColor, getColorFromValue } from "./lib/color-logic";
 import { type Color, formatHex8, formatRgb, formatHsl } from "culori";
 import type {
   Identifier,
+  KeyValueProperty,
   Module,
   StringLiteral,
   TsLiteralType,
@@ -42,6 +41,8 @@ import stylexBabelPlugin from "@stylexjs/babel-plugin";
 import * as prettier from "prettier";
 import { calculateStartOffset, parse } from "./lib/parser";
 import { type UserConfiguration } from "./lib/settings";
+import { CSSVirtualDocument } from "./lib/virtual-document";
+import { getCSSLanguageService } from "vscode-css-languageservice";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -168,6 +169,8 @@ let hasDiagnosticRelatedInformationCapability = false;
   const colorCache = new Map<string, ColorInformation[]>();
   const parseCache = new Map<string, Module>();
 
+  const virtualDocumentFactory = new CSSVirtualDocument();
+
   // Clear cache for documents that closed
   documents.onDidClose((e) => {
     documentSettings.delete(e.document.uri);
@@ -184,38 +187,272 @@ let hasDiagnosticRelatedInformationCapability = false;
     connection.console.log("We received a file change event");
   });
 
-  // This handler provides the completion items.
-  connection.onCompletion(
-    (textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-      const textDocument = documents.get(
-        textDocumentPosition.textDocument.uri,
-      )!;
-      const text = textDocument.getText();
-
-      let doubleQuoteCount = 0,
-        singleQuoteCount = 0;
-      for (const char of text) {
-        if (char === '"') doubleQuoteCount++;
-        else if (char === "'") singleQuoteCount++;
-      }
-
-      let quote = "'";
-      if (doubleQuoteCount > singleQuoteCount) {
-        quote = '"';
-      }
-
-      return [
-        // TODO: Make this have a code action maybe? Or it would be better if StyleX shifted away from all imports
-        // @see https://github.com/facebook/stylex/discussions/261
-        {
-          label: "Import StyleX Namespace",
-          kind: CompletionItemKind.Reference,
-          insertText: `import * as stylex from ${quote}@stylexjs/stylex${quote};`,
-        },
-        // TODO: Look into using CSS Language Server for more completion items
-      ];
+  const cssLanguageService = getCSSLanguageService();
+  cssLanguageService.configure({
+    completion: {
+      completePropertyWithSemicolon: false,
+      triggerPropertyValueCompletion: false,
     },
-  );
+  });
+
+  function calculateKeyValue(
+    node: KeyValueProperty,
+    stateManager: StateManager,
+  ) {
+    return <string>(
+      (node.key.type === "Identifier"
+        ? node.key.value
+        : node.key.type === "Computed"
+          ? node.key.expression.type === "StringLiteral"
+            ? node.key.expression.value
+            : node.key.expression.type === "Identifier"
+              ? stateManager
+                  .getConstantFromScope(node.key.expression.value)
+                  ?.toString()
+              : "--custom"
+          : "--custom")
+    );
+  }
+
+  // This handler provides the completion items.
+  connection.onCompletion(async (params, token) => {
+    const textDocument = documents.get(params.textDocument.uri)!;
+    const text = textDocument.getText();
+
+    const settings = await getDocumentSettings(params.textDocument.uri);
+    const languageId = await getLanguageId(
+      params.textDocument.uri,
+      textDocument,
+    );
+
+    let parseResult;
+    try {
+      if (parseCache.has(params.textDocument.uri)) {
+        parseResult = parseCache.get(params.textDocument.uri)!;
+      } else {
+        parseResult = await parse({
+          source: text,
+          languageId,
+          parser: init,
+          token,
+        });
+        parseCache.set(params.textDocument.uri, parseResult);
+      }
+    } catch (e) {
+      console.log(e);
+      return [];
+    }
+
+    let completions: CompletionItem[] = [];
+    const stateManager = new StateManager();
+    let moduleStart = 0;
+
+    await walk<{
+      propertyName: string | undefined;
+      callInside: string | null | undefined;
+      propertyDeep: number;
+    }>(
+      parseResult,
+      {
+        Module(node) {
+          moduleStart = node.span.start - calculateStartOffset(textDocument);
+        },
+
+        ImportDeclaration(node) {
+          handleImports(node, stateManager, settings);
+
+          return false;
+        },
+
+        VariableDeclarator(node) {
+          handleRequires(node, stateManager, settings);
+        },
+
+        "*"(node) {
+          if ("span" in node) {
+            const startSpanRelative = textDocument.positionAt(
+              node.span.start - moduleStart,
+            );
+            const endSpanRelative = textDocument.positionAt(
+              node.span.end - moduleStart,
+            );
+
+            if (
+              params.position.line > endSpanRelative.line ||
+              params.position.line < startSpanRelative.line
+            ) {
+              return false;
+            }
+          }
+        },
+
+        WithStatement() {
+          return false;
+        },
+
+        CallExpression(node, state) {
+          let verifiedImport: string | undefined;
+
+          if (
+            (node.callee.type === "MemberExpression" &&
+              node.callee.object.type === "Identifier" &&
+              stateManager.verifyStylexIdentifier(node.callee.object.value) &&
+              node.callee.property.type === "Identifier" &&
+              (verifiedImport = node.callee.property.value)) ||
+            (node.callee.type === "Identifier" &&
+              ["create", "createTheme", "defineVars", "keyframes"].includes(
+                (verifiedImport = stateManager.verifyNamedImport(
+                  node.callee.value,
+                )) || "",
+              ) &&
+              verifiedImport)
+          ) {
+            if (verifiedImport === "create" || verifiedImport === "keyframes") {
+              return {
+                ...state,
+                callInside: verifiedImport,
+                propertyDeep: 1,
+              };
+            } else if (
+              verifiedImport === "createTheme" ||
+              verifiedImport === "defineVars"
+            ) {
+              return {
+                state: {
+                  ...state,
+                  callInside: verifiedImport,
+                  propertyDeep: 1,
+                },
+                ignore: [
+                  verifiedImport === "createTheme" ? "arguments.0" : "",
+                  "callee",
+                ],
+              };
+            }
+          }
+
+          return {
+            ...state,
+            callInside: null,
+          };
+        },
+
+        KeyValueProperty(node, state) {
+          if (state && state.callInside) {
+            if (
+              (state.callInside === "create" ||
+                state.callInside === "keyframes") &&
+              state.propertyDeep === 2
+            ) {
+              return {
+                ...state,
+                propertyName: calculateKeyValue(node, stateManager),
+                propertyDeep: 3,
+              };
+            } else if (
+              state.callInside === "createTheme" ||
+              state.callInside === "defineVars"
+            ) {
+              if (node.value.type === "ObjectExpression") {
+                state.propertyDeep += 1;
+              }
+              return {
+                ...state,
+                // TODO: Manually pull out all possible completions for variables
+                // We choose background because it provides a good amount of property types supported in the grammar
+                propertyName: "background",
+              };
+            } else {
+              return {
+                ...state,
+                propertyDeep: state.propertyDeep + 1,
+              };
+            }
+          }
+        },
+
+        StringLiteral(node, state) {
+          if (state && state.callInside && state.propertyName !== "content") {
+            const startSpanRelative = textDocument.positionAt(
+              node.span.start - moduleStart,
+            );
+            const endSpanRelative = textDocument.positionAt(
+              node.span.end - moduleStart,
+            );
+
+            if (
+              params.position.line > endSpanRelative.line ||
+              params.position.line < startSpanRelative.line ||
+              (params.position.line === endSpanRelative.line &&
+                params.position.character > endSpanRelative.character) ||
+              (params.position.line === startSpanRelative.line &&
+                params.position.character < startSpanRelative.character)
+            ) {
+              return false;
+            }
+
+            const doc = virtualDocumentFactory.createVirtualDocument(
+              dashifyFn(state.propertyName || "--custom"),
+              node.value,
+            );
+
+            const relativePosition = doc.positionAt(
+              virtualDocumentFactory.mapOffsetToVirtualOffset(
+                doc,
+                params.position.character - startSpanRelative.character,
+              ),
+            );
+
+            console.log(doc.getText(), relativePosition);
+
+            completions = cssLanguageService
+              .doComplete(
+                doc,
+                relativePosition,
+                cssLanguageService.parseStylesheet(doc),
+                {
+                  completePropertyWithSemicolon: false,
+                  triggerPropertyValueCompletion: true,
+                },
+              )
+              .items.map((item) => {
+                const newTextEdit = item;
+                if (newTextEdit.textEdit) {
+                  if ("range" in newTextEdit.textEdit) {
+                    newTextEdit.textEdit.range.start.line +=
+                      startSpanRelative.line - relativePosition.line;
+                    newTextEdit.textEdit.range.end.line +=
+                      startSpanRelative.line - relativePosition.line;
+                    newTextEdit.textEdit.range.start.character +=
+                      startSpanRelative.character -
+                      relativePosition.character +
+                      1;
+                    newTextEdit.textEdit.range.end.character +=
+                      startSpanRelative.character -
+                      relativePosition.character +
+                      1;
+                  } else {
+                    console.log(
+                      "[WARN] Mapping InsertReplaceEdit is not supported yet.",
+                    );
+                    delete newTextEdit.textEdit;
+                  }
+                }
+                return newTextEdit;
+              });
+
+            console.log("Found completions", completions);
+
+            return States.EXIT;
+          }
+        },
+      },
+      token,
+      { propertyName: undefined, propertyDeep: 0, callInside: undefined },
+    );
+
+    return completions;
+  });
 
   async function getLanguageId(uri: string, document: TextDocument) {
     const { includedLanguages } = await getDocumentSettings(uri);
@@ -277,14 +514,6 @@ let hasDiagnosticRelatedInformationCapability = false;
       ) {
         return false;
       }
-
-      console.log(
-        "Found color",
-        color,
-        node.value,
-        node.span.start,
-        moduleStart,
-      );
 
       return {
         range: {
@@ -350,10 +579,8 @@ let hasDiagnosticRelatedInformationCapability = false;
           return false;
         },
 
-        VariableDeclaration(node) {
-          for (const declaration of node.declarations) {
-            handleRequires(declaration, stateManager, settings);
-          }
+        VariableDeclarator(node) {
+          handleRequires(node, stateManager, settings);
         },
 
         TsTypeReference(node) {
@@ -455,6 +682,8 @@ let hasDiagnosticRelatedInformationCapability = false;
 
     colorCache.delete(params.textDocument.uri);
     colorCache.set(params.textDocument.uri, colors);
+
+    console.log("Found colors", colors);
 
     return colors;
   });
