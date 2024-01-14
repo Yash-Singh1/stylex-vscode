@@ -12,7 +12,7 @@ interface CSSVirtualDocumentImplementation {
 }
 
 export class CSSVirtualDocument implements CSSVirtualDocumentImplementation {
-  private static readonly wrapperPreRoot = ":root{\n";
+  public static readonly wrapperPreRoot = ":root{\n";
 
   public constructor() {}
 

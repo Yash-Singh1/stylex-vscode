@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`virtual document factory > creates a virtual document 1`] = `
+":root{
+color: red;
+}"
+`;
