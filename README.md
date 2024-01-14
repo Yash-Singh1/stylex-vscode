@@ -4,7 +4,9 @@ StyleX Intellisense enhances your StyleX development experience by providing adv
 
 ## Installation
 
-You can install this extension via the Visual Studio Code Marketplace.
+**[Install via the Visual Studio Code Marketplace →](https://marketplace.visualstudio.com/items?itemName=yash-singh.stylex)**
+
+In order for this extension to work, make sure you have [**`@stylexjs/stylex`** installed](https://stylexjs.com/docs/learn/installation/) in your workspace.
 
 ## Functionality
 
