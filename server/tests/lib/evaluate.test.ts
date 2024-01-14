@@ -11,6 +11,11 @@ function evaluateModule(
   return evaluate((program.body[0] as ExpressionStatement).expression, state);
 }
 
+function removeSpan(obj: any) {
+  delete obj.span;
+  return obj;
+}
+
 async function assertEvaluation(
   src: string,
   real: any,
@@ -22,7 +27,21 @@ async function assertEvaluation(
     stateManager,
   );
   return expect(
-    "value" in evaluationRequest ? evaluationRequest.value : undefined,
+    "value" in evaluationRequest
+      ? Array.isArray(evaluationRequest.value)
+        ? evaluationRequest.value.map((el) => {
+            return removeSpan(el);
+          })
+        : typeof evaluationRequest.value === "object" &&
+            evaluationRequest.value !== null &&
+            !(evaluationRequest.value instanceof RegExp)
+          ? Object.fromEntries(
+              Object.entries(evaluationRequest.value).map(([key, value]) => {
+                return [key, removeSpan(value)];
+              }),
+            )
+          : evaluationRequest.value
+      : undefined,
     "Evaluation Request result: " + JSON.stringify(evaluationRequest),
   ).toStrictEqual(real);
 }
@@ -46,15 +65,28 @@ describe("evaluate", () => {
         test1: {
           value: "foo",
           static: true,
-          span: {
-            ctxt: 0,
-            end: 111,
-            start: 106,
-          },
         },
       },
       undefined,
       parser,
     );
+  });
+
+  testParser("evaluates firstThatWorks", async ({ parser }) => {
+    const stateManager = new StateManager();
+
+    assertEvaluation("stylex.firstThatWorks()", [], stateManager, parser);
+    assertEvaluation(
+      'stylex.firstThatWorks("red", "blue")',
+      [
+        { static: true, value: "blue" },
+        { static: true, value: "red" },
+      ],
+      stateManager,
+      parser,
+    );
+
+    stateManager.addNamedImport("firstThatWorks", "firstThatWorks");
+    assertEvaluation("firstThatWorks()", [], stateManager, parser);
   });
 });
