@@ -73,15 +73,27 @@ export function handleRequires(
         if (property.type === "AssignmentPatternProperty") {
           state.addNamedImport(property.key.value, property.key.value);
         } else if (property.type === "KeyValuePatternProperty") {
-          // TODO: Handle computed property keys
-          if (
-            property.value.type === "Identifier" &&
-            property.key.type !== "Computed"
-          ) {
-            state.addNamedImport(
-              property.value.value,
-              property.key.value.toString(),
-            );
+          if (property.value.type === "Identifier") {
+            if (property.key.type === "Computed") {
+              if (property.key.expression.type === "StringLiteral") {
+                state.addNamedImport(
+                  property.value.value,
+                  property.key.expression.value,
+                );
+              } else if (property.key.expression.type === "Identifier") {
+                const constantValue = state.getConstantFromScope(
+                  property.key.expression.value,
+                );
+                if (typeof constantValue === "string") {
+                  state.addNamedImport(property.value.value, constantValue);
+                }
+              }
+            } else {
+              state.addNamedImport(
+                property.value.value,
+                property.key.value.toString(),
+              );
+            }
           }
         }
       }
