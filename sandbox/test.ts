@@ -19,6 +19,19 @@ export const dracula = createThemee(colors, {
   lineColor: "red",
 });
 
+const styles = stylex.create({
+  root: {
+    width: "100%",
+    maxWidth: 800,
+    minHeight: 40,
+  },
+  child: {
+    backgroundColor: "",
+    content: '',
+    marginBlock: "1rem",
+  },
+});
+
 const styles = stylex2.create({
   header: {
     position: stylex.firstThatWorks(

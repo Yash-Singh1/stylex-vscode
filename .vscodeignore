@@ -24,6 +24,7 @@ server/node_modules/**
 *.vsix
 scripts/
 cdn/
+sandbox/
 tsup.config.ts
 .prettierrc
 .eslintignore

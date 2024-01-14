@@ -65,9 +65,14 @@ let hasDiagnosticRelatedInformationCapability = false;
     dashify as unknown as typeof import("@stylexjs/shared/lib/utils/dashify")
   ).default;
 
-  const transformValueFn = (
+  const _transformValueFn = (
     transformValue as unknown as typeof import("@stylexjs/shared/lib/transform-value")
   ).default;
+
+  const transformValueFn: typeof _transformValueFn = function (...args) {
+    if (typeof args[1] === "string" && args[1] === "") return '""';
+    return _transformValueFn(...args);
+  };
 
   connection.onInitialize((params: InitializeParams) => {
     const capabilities = params.capabilities;
