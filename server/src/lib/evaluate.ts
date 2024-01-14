@@ -120,11 +120,15 @@ export function evaluate(
             case "AssignmentProperty": {
               const keyVal = evaluate(property.key, stateManager);
               if (
-                typeof keyVal === "string" ||
-                typeof keyVal === "number" ||
-                typeof keyVal === "symbol"
+                "value" in keyVal &&
+                (typeof keyVal.value === "string" ||
+                  typeof keyVal.value === "number" ||
+                  typeof keyVal.value === "symbol")
               ) {
-                accumalator[keyVal] = evaluate(property.value, stateManager);
+                accumalator[keyVal.value] = evaluate(
+                  property.value,
+                  stateManager,
+                );
               }
               break;
             }
@@ -235,57 +239,62 @@ export function evaluate(
         return { value: result, static: true, span: node.span };
 
       if (
-        typeof left.value !== "number" ||
-        typeof left.value !== "bigint" ||
-        typeof right.value !== "number" ||
-        typeof right.value !== "bigint" ||
+        (typeof left.value !== "number" &&
+          typeof left.value !== "bigint" &&
+          typeof left.value !== "string") ||
+        (typeof right.value !== "number" &&
+          typeof right.value !== "bigint" &&
+          typeof right.value !== "string") ||
         typeof left.value !== typeof right.value
       ) {
         return { value: undefined, static: true, span: node.span };
       }
 
+      // Typescript doesn't have a way to narrow down a type dependant on another type as of writing
+      const lr = [left.value, right.value] as [number, number];
+
       switch (node.operator) {
         case "<<":
-          result = left.value << right.value;
+          result = lr[0] << lr[1];
           break;
         case ">>":
-          result = left.value >> right.value;
+          result = lr[0] >> lr[1];
           break;
         case ">>>":
-          result = left.value >>> right.value;
+          result = lr[0] >>> lr[1];
           break;
         case "+":
-          result = left.value + right.value;
+          result = lr[0] + lr[1];
           break;
         case "-":
-          result = left.value - right.value;
+          result = lr[0] - lr[1];
           break;
         case "*":
-          result = left.value * right.value;
+          result = lr[0] * lr[1];
           break;
         case "/":
-          result = left.value / right.value;
+          result = lr[0] / lr[1];
           break;
         case "%":
-          result = left.value % right.value;
+          result = lr[0] % lr[1];
           break;
         case "**":
-          result = left.value ** right.value;
+          result = lr[0] ** lr[1];
           break;
         case "|":
-          result = left.value | right.value;
+          result = lr[0] | lr[1];
           break;
         case "^":
-          result = left.value ^ right.value;
+          result = lr[0] ^ lr[1];
           break;
         case "&":
-          result = left.value & right.value;
+          result = lr[0] & lr[1];
           break;
         default:
           throw new Error("Unknown binary operator");
       }
 
-      break;
+      return { value: result, static: true, span: node.span };
     }
 
     case "JSXElement":

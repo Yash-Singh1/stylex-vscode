@@ -9,8 +9,6 @@ export type KeywordColor = "transparent" | "currentColor";
 export function getColorFromValue(
   value: unknown,
 ): culori.Color | KeywordColor | null {
-  // console.log(typeof value);
-
   if (typeof value !== "string") return null;
 
   const trimmedValue = value.trim();
@@ -31,12 +29,11 @@ export function getColorFromValue(
         .default,
     ).includes(trimmedValue)
   ) {
-    // console.log('fail here', trimmedValue, Object.keys(namedColors));
     return null;
   }
 
   const color = culori.parse(trimmedValue);
-  // console.log('unparsable', color);
+
   return color ?? null;
 }
 

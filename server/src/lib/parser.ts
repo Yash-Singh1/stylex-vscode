@@ -40,14 +40,22 @@ export function parse({
   });
 }
 
-export function calculateStartOffset(textDocument: TextDocument) {
+export function calculateStartOffset(textDocument: {
+  getText(range: {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+  }): string;
+}) {
   let startOffset = 0;
-  let line = textDocument.getText({
-    start: { line: 0, character: 0 },
-    end: { line: 1, character: 0 },
-  });
+  let line = textDocument
+    .getText({
+      start: { line: 0, character: 0 },
+      end: { line: 1, character: 0 },
+    })
+    .slice(0, -1);
   let currentLine = 1;
   let multilineComment = false;
+
   while (
     !line.trim() ||
     line.trim().startsWith("//") ||
@@ -55,7 +63,6 @@ export function calculateStartOffset(textDocument: TextDocument) {
     multilineComment
   ) {
     let changes = true;
-    let multilineCommentWasThere = false;
     while (changes) {
       changes = false;
       if (!multilineComment && line.trim().startsWith("/*")) {
@@ -63,7 +70,6 @@ export function calculateStartOffset(textDocument: TextDocument) {
         startOffset += line.indexOf("/*") + 2;
         line = line.trim().slice(2);
         changes = true;
-        multilineCommentWasThere = true;
       }
 
       const multilineCommentEnd = line.indexOf("*/");
@@ -72,21 +78,17 @@ export function calculateStartOffset(textDocument: TextDocument) {
         multilineComment = false;
         line = line.slice(multilineCommentEnd + 2);
         changes = true;
-        multilineCommentWasThere = true;
-        --startOffset;
       }
     }
 
-    if (multilineCommentWasThere) {
-      ++startOffset;
-    }
-
     if (!line.trim() || line.trim().startsWith("//") || multilineComment) {
-      startOffset += line.length;
-      line = textDocument.getText({
-        start: { line: currentLine, character: 0 },
-        end: { line: currentLine + 1, character: 0 },
-      });
+      startOffset += line.length + 1;
+      line = textDocument
+        .getText({
+          start: { line: currentLine, character: 0 },
+          end: { line: currentLine + 1, character: 0 },
+        })
+        .slice(0, -1);
       ++currentLine;
     } else {
       break;

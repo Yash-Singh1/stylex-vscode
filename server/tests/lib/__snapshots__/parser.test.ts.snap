@@ -1,0 +1,604 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`parse > handles typescript that conflicts with tsx 1`] = `
+{
+  "body": [
+    {
+      "source": {
+        "raw": ""@stylexjs/stylex"",
+        "span": {
+          "ctxt": 0,
+          "end": 38,
+          "start": 20,
+        },
+        "type": "StringLiteral",
+        "value": "@stylexjs/stylex",
+      },
+      "span": {
+        "ctxt": 0,
+        "end": 39,
+        "start": 1,
+      },
+      "specifiers": [
+        {
+          "local": {
+            "optional": false,
+            "span": {
+              "ctxt": 2,
+              "end": 14,
+              "start": 8,
+            },
+            "type": "Identifier",
+            "value": "stylex",
+          },
+          "span": {
+            "ctxt": 0,
+            "end": 14,
+            "start": 8,
+          },
+          "type": "ImportDefaultSpecifier",
+        },
+      ],
+      "type": "ImportDeclaration",
+      "typeOnly": false,
+      "with": null,
+    },
+    {
+      "body": {
+        "body": [
+          {
+            "computed": false,
+            "init": null,
+            "key": {
+              "optional": false,
+              "span": {
+                "ctxt": 0,
+                "end": 63,
+                "start": 60,
+              },
+              "type": "Identifier",
+              "value": "foo",
+            },
+            "optional": false,
+            "params": [],
+            "readonly": false,
+            "span": {
+              "ctxt": 0,
+              "end": 72,
+              "start": 60,
+            },
+            "type": "TsPropertySignature",
+            "typeAnnotation": {
+              "span": {
+                "ctxt": 0,
+                "end": 71,
+                "start": 63,
+              },
+              "type": "TsTypeAnnotation",
+              "typeAnnotation": {
+                "kind": "string",
+                "span": {
+                  "ctxt": 0,
+                  "end": 71,
+                  "start": 65,
+                },
+                "type": "TsKeywordType",
+              },
+            },
+            "typeParams": null,
+          },
+        ],
+        "span": {
+          "ctxt": 0,
+          "end": 74,
+          "start": 56,
+        },
+        "type": "TsInterfaceBody",
+      },
+      "declare": false,
+      "extends": [],
+      "id": {
+        "optional": false,
+        "span": {
+          "ctxt": 2,
+          "end": 55,
+          "start": 51,
+        },
+        "type": "Identifier",
+        "value": "Main",
+      },
+      "span": {
+        "ctxt": 0,
+        "end": 74,
+        "start": 41,
+      },
+      "type": "TsInterfaceDeclaration",
+      "typeParams": null,
+    },
+    {
+      "declarations": [
+        {
+          "definite": false,
+          "id": {
+            "optional": false,
+            "span": {
+              "ctxt": 2,
+              "end": 88,
+              "start": 82,
+            },
+            "type": "Identifier",
+            "typeAnnotation": null,
+            "value": "config",
+          },
+          "init": {
+            "expression": {
+              "properties": [],
+              "span": {
+                "ctxt": 0,
+                "end": 99,
+                "start": 97,
+              },
+              "type": "ObjectExpression",
+            },
+            "span": {
+              "ctxt": 0,
+              "end": 99,
+              "start": 91,
+            },
+            "type": "TsTypeAssertion",
+            "typeAnnotation": {
+              "span": {
+                "ctxt": 0,
+                "end": 96,
+                "start": 92,
+              },
+              "type": "TsTypeReference",
+              "typeName": {
+                "optional": false,
+                "span": {
+                  "ctxt": 2,
+                  "end": 96,
+                  "start": 92,
+                },
+                "type": "Identifier",
+                "value": "Main",
+              },
+              "typeParams": null,
+            },
+          },
+          "span": {
+            "ctxt": 0,
+            "end": 99,
+            "start": 82,
+          },
+          "type": "VariableDeclarator",
+        },
+      ],
+      "declare": false,
+      "kind": "const",
+      "span": {
+        "ctxt": 0,
+        "end": 100,
+        "start": 76,
+      },
+      "type": "VariableDeclaration",
+    },
+  ],
+  "interpreter": null,
+  "span": {
+    "ctxt": 0,
+    "end": 100,
+    "start": 1,
+  },
+  "type": "Module",
+}
+`;
+
+exports[`parse > handles typescript that conflicts with tsx 2`] = `
+{
+  "body": [
+    {
+      "source": {
+        "raw": ""@stylexjs/stylex"",
+        "span": {
+          "ctxt": 0,
+          "end": 185,
+          "start": 167,
+        },
+        "type": "StringLiteral",
+        "value": "@stylexjs/stylex",
+      },
+      "span": {
+        "ctxt": 0,
+        "end": 186,
+        "start": 148,
+      },
+      "specifiers": [
+        {
+          "local": {
+            "optional": false,
+            "span": {
+              "ctxt": 2,
+              "end": 161,
+              "start": 155,
+            },
+            "type": "Identifier",
+            "value": "stylex",
+          },
+          "span": {
+            "ctxt": 0,
+            "end": 161,
+            "start": 155,
+          },
+          "type": "ImportDefaultSpecifier",
+        },
+      ],
+      "type": "ImportDeclaration",
+      "typeOnly": false,
+      "with": null,
+    },
+    {
+      "body": {
+        "body": [
+          {
+            "computed": false,
+            "init": null,
+            "key": {
+              "optional": false,
+              "span": {
+                "ctxt": 0,
+                "end": 222,
+                "start": 219,
+              },
+              "type": "Identifier",
+              "value": "foo",
+            },
+            "optional": false,
+            "params": [],
+            "readonly": false,
+            "span": {
+              "ctxt": 0,
+              "end": 231,
+              "start": 219,
+            },
+            "type": "TsPropertySignature",
+            "typeAnnotation": {
+              "span": {
+                "ctxt": 0,
+                "end": 230,
+                "start": 222,
+              },
+              "type": "TsTypeAnnotation",
+              "typeAnnotation": {
+                "kind": "string",
+                "span": {
+                  "ctxt": 0,
+                  "end": 230,
+                  "start": 224,
+                },
+                "type": "TsKeywordType",
+              },
+            },
+            "typeParams": null,
+          },
+        ],
+        "span": {
+          "ctxt": 0,
+          "end": 239,
+          "start": 209,
+        },
+        "type": "TsInterfaceBody",
+      },
+      "declare": false,
+      "extends": [],
+      "id": {
+        "optional": false,
+        "span": {
+          "ctxt": 2,
+          "end": 208,
+          "start": 204,
+        },
+        "type": "Identifier",
+        "value": "Main",
+      },
+      "span": {
+        "ctxt": 0,
+        "end": 239,
+        "start": 194,
+      },
+      "type": "TsInterfaceDeclaration",
+      "typeParams": null,
+    },
+    {
+      "declarations": [
+        {
+          "definite": false,
+          "id": {
+            "optional": false,
+            "span": {
+              "ctxt": 2,
+              "end": 265,
+              "start": 259,
+            },
+            "type": "Identifier",
+            "typeAnnotation": null,
+            "value": "config",
+          },
+          "init": {
+            "children": [
+              {
+                "expression": {
+                  "raw": ""hello world"",
+                  "span": {
+                    "ctxt": 0,
+                    "end": 288,
+                    "start": 275,
+                  },
+                  "type": "StringLiteral",
+                  "value": "hello world",
+                },
+                "span": {
+                  "ctxt": 0,
+                  "end": 289,
+                  "start": 274,
+                },
+                "type": "JSXExpressionContainer",
+              },
+            ],
+            "closing": {
+              "name": {
+                "optional": false,
+                "span": {
+                  "ctxt": 1,
+                  "end": 295,
+                  "start": 291,
+                },
+                "type": "Identifier",
+                "value": "Main",
+              },
+              "span": {
+                "ctxt": 0,
+                "end": 296,
+                "start": 289,
+              },
+              "type": "JSXClosingElement",
+            },
+            "opening": {
+              "attributes": [],
+              "name": {
+                "optional": false,
+                "span": {
+                  "ctxt": 1,
+                  "end": 273,
+                  "start": 269,
+                },
+                "type": "Identifier",
+                "value": "Main",
+              },
+              "selfClosing": false,
+              "span": {
+                "ctxt": 0,
+                "end": 274,
+                "start": 268,
+              },
+              "type": "JSXOpeningElement",
+              "typeArguments": null,
+            },
+            "span": {
+              "ctxt": 0,
+              "end": 296,
+              "start": 268,
+            },
+            "type": "JSXElement",
+          },
+          "span": {
+            "ctxt": 0,
+            "end": 296,
+            "start": 259,
+          },
+          "type": "VariableDeclarator",
+        },
+      ],
+      "declare": false,
+      "kind": "const",
+      "span": {
+        "ctxt": 0,
+        "end": 297,
+        "start": 253,
+      },
+      "type": "VariableDeclaration",
+    },
+  ],
+  "interpreter": null,
+  "span": {
+    "ctxt": 0,
+    "end": 297,
+    "start": 148,
+  },
+  "type": "Module",
+}
+`;
+
+exports[`parse > parses a simple file 1`] = `
+{
+  "body": [
+    {
+      "source": {
+        "raw": ""@stylexjs/stylex"",
+        "span": {
+          "ctxt": 0,
+          "end": 38,
+          "start": 20,
+        },
+        "type": "StringLiteral",
+        "value": "@stylexjs/stylex",
+      },
+      "span": {
+        "ctxt": 0,
+        "end": 39,
+        "start": 1,
+      },
+      "specifiers": [
+        {
+          "local": {
+            "optional": false,
+            "span": {
+              "ctxt": 2,
+              "end": 14,
+              "start": 8,
+            },
+            "type": "Identifier",
+            "value": "stylex",
+          },
+          "span": {
+            "ctxt": 0,
+            "end": 14,
+            "start": 8,
+          },
+          "type": "ImportDefaultSpecifier",
+        },
+      ],
+      "type": "ImportDeclaration",
+      "typeOnly": false,
+      "with": null,
+    },
+    {
+      "declarations": [
+        {
+          "definite": false,
+          "id": {
+            "optional": false,
+            "span": {
+              "ctxt": 2,
+              "end": 53,
+              "start": 47,
+            },
+            "type": "Identifier",
+            "typeAnnotation": null,
+            "value": "styles",
+          },
+          "init": {
+            "arguments": [
+              {
+                "expression": {
+                  "properties": [
+                    {
+                      "key": {
+                        "optional": false,
+                        "span": {
+                          "ctxt": 0,
+                          "end": 77,
+                          "start": 74,
+                        },
+                        "type": "Identifier",
+                        "value": "red",
+                      },
+                      "type": "KeyValueProperty",
+                      "value": {
+                        "properties": [
+                          {
+                            "key": {
+                              "optional": false,
+                              "span": {
+                                "ctxt": 0,
+                                "end": 90,
+                                "start": 85,
+                              },
+                              "type": "Identifier",
+                              "value": "color",
+                            },
+                            "type": "KeyValueProperty",
+                            "value": {
+                              "raw": ""red"",
+                              "span": {
+                                "ctxt": 0,
+                                "end": 97,
+                                "start": 92,
+                              },
+                              "type": "StringLiteral",
+                              "value": "red",
+                            },
+                          },
+                        ],
+                        "span": {
+                          "ctxt": 0,
+                          "end": 102,
+                          "start": 79,
+                        },
+                        "type": "ObjectExpression",
+                      },
+                    },
+                  ],
+                  "span": {
+                    "ctxt": 0,
+                    "end": 105,
+                    "start": 70,
+                  },
+                  "type": "ObjectExpression",
+                },
+                "spread": null,
+              },
+            ],
+            "callee": {
+              "object": {
+                "optional": false,
+                "span": {
+                  "ctxt": 2,
+                  "end": 62,
+                  "start": 56,
+                },
+                "type": "Identifier",
+                "value": "stylex",
+              },
+              "property": {
+                "optional": false,
+                "span": {
+                  "ctxt": 0,
+                  "end": 69,
+                  "start": 63,
+                },
+                "type": "Identifier",
+                "value": "create",
+              },
+              "span": {
+                "ctxt": 0,
+                "end": 69,
+                "start": 56,
+              },
+              "type": "MemberExpression",
+            },
+            "span": {
+              "ctxt": 0,
+              "end": 106,
+              "start": 56,
+            },
+            "type": "CallExpression",
+            "typeArguments": null,
+          },
+          "span": {
+            "ctxt": 0,
+            "end": 106,
+            "start": 47,
+          },
+          "type": "VariableDeclarator",
+        },
+      ],
+      "declare": false,
+      "kind": "const",
+      "span": {
+        "ctxt": 0,
+        "end": 107,
+        "start": 41,
+      },
+      "type": "VariableDeclaration",
+    },
+  ],
+  "interpreter": null,
+  "span": {
+    "ctxt": 0,
+    "end": 107,
+    "start": 1,
+  },
+  "type": "Module",
+}
+`;
