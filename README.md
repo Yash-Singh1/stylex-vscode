@@ -48,7 +48,11 @@ List of custom module names that should be considered as the StyleX package for 
 
 ```json
 {
-  "stylex.aliasModuleNames": ["@my-org/stylex"]
+  "stylex.aliasModuleNames": [
+    "@stylexjs/stylex",
+    "stylex",
+    "@my-org/stylex"
+  ]
 }
 ```
 
