@@ -10,6 +10,7 @@ import {
   Hover,
   MarkupKind,
   CompletionItem,
+  CompletionList,
 } from "vscode-languageserver/node";
 
 import { readFileSync } from "node:fs";
@@ -250,6 +251,7 @@ let hasDiagnosticRelatedInformationCapability = false;
     }
 
     let completions: CompletionItem[] = [];
+    let itemDefaults: CompletionList["itemDefaults"];
     const stateManager = new StateManager();
     let moduleStart = 0;
 
@@ -425,41 +427,39 @@ let hasDiagnosticRelatedInformationCapability = false;
               ),
             );
 
-            completions = cssLanguageService
-              .doComplete(
-                doc,
-                relativePosition,
-                cssLanguageService.parseStylesheet(doc),
-                {
-                  completePropertyWithSemicolon: false,
-                  triggerPropertyValueCompletion: true,
-                },
-              )
-              .items.map((item) => {
-                const newTextEdit = item;
-                if (newTextEdit.textEdit) {
-                  if ("range" in newTextEdit.textEdit) {
-                    newTextEdit.textEdit.range.start.line +=
-                      startSpanRelative.line - relativePosition.line;
-                    newTextEdit.textEdit.range.end.line +=
-                      startSpanRelative.line - relativePosition.line;
-                    newTextEdit.textEdit.range.start.character +=
-                      startSpanRelative.character -
-                      relativePosition.character +
-                      1;
-                    newTextEdit.textEdit.range.end.character +=
-                      startSpanRelative.character -
-                      relativePosition.character +
-                      1;
-                  } else {
-                    console.log(
-                      "[WARN] Mapping InsertReplaceEdit is not supported yet.",
-                    );
-                    delete newTextEdit.textEdit;
-                  }
+            const cssCompletions = cssLanguageService.doComplete(
+              doc,
+              relativePosition,
+              cssLanguageService.parseStylesheet(doc),
+              {
+                completePropertyWithSemicolon: false,
+                triggerPropertyValueCompletion: true,
+              },
+            );
+
+            completions = cssCompletions.items.map((item) => {
+              const newTextEdit = item;
+              if (newTextEdit.textEdit) {
+                if ("range" in newTextEdit.textEdit) {
+                  newTextEdit.textEdit.range.start.line +=
+                    params.position.line - relativePosition.line;
+                  newTextEdit.textEdit.range.end.line +=
+                    params.position.line - relativePosition.line;
+                  newTextEdit.textEdit.range.start.character +=
+                    params.position.character - relativePosition.character;
+                  newTextEdit.textEdit.range.end.character +=
+                    params.position.character - relativePosition.character;
+                } else {
+                  console.log(
+                    "[WARN] Mapping InsertReplaceEdit is not supported yet.",
+                  );
+                  delete newTextEdit.textEdit;
                 }
-                return newTextEdit;
-              });
+              }
+              return newTextEdit;
+            });
+
+            itemDefaults = cssCompletions.itemDefaults;
 
             console.log("Found completions", completions);
 
@@ -471,7 +471,7 @@ let hasDiagnosticRelatedInformationCapability = false;
       { propertyName: undefined, propertyDeep: 0, callInside: undefined },
     );
 
-    return completions;
+    return { items: completions, isIncomplete: true, itemDefaults };
   });
 
   async function getLanguageId(uri: string, document: TextDocument) {
@@ -875,8 +875,6 @@ let hasDiagnosticRelatedInformationCapability = false;
         },
 
         VariableDeclarator(node) {
-          console.log(node);
-
           handleRequires(node, stateManager, settings);
         },
 
