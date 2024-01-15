@@ -9,8 +9,8 @@ const DARK = "@media (prefers-color-scheme: dark)";
 
 export const vars = stylex.defineVars({
   fadeIn: stylex.keyframes({
-    '0%': { opacity: 0 },
-    '100%': { opacity: 1},
+    "0%": { opacity: 0 },
+    "100%": { opacity: 1 },
   }),
 });
 
