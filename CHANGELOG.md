@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.5
+
+- Move default modules to settings
+- Fixes for multi-byte characters in files
+- Run Linting and testing in CI
+
 ## 0.0.4
 
 - Various bug fixes and stability improvement
