@@ -4,6 +4,8 @@ import { calculateStartOffset, parse } from "../../src/lib/parser";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { testParser } from "../helpers/parseSetup";
 
+const textEncoder = new TextEncoder();
+
 describe("parse", () => {
   testParser("parses a simple file", async ({ parser }) => {
     const source = `import stylex from "@stylexjs/stylex";
@@ -84,7 +86,13 @@ const config = <Main>{}; // This should not be parsed as a JSX element
 describe("calculateStartOffset", () => {
   test("handles calculations correctly", () => {
     function realOffset(src: string) {
-      return Math.max(src.indexOf("import"), src.indexOf("{"));
+      const importIdx = src.indexOf("import");
+      const blockIdx = src.indexOf("{");
+      const offset = Math.min(
+        importIdx < 0 ? src.length : importIdx,
+        blockIdx < 0 ? src.length : blockIdx,
+      );
+      return textEncoder.encode(src.slice(0, offset)).length;
     }
 
     function assertOffsetCorrect(src: string) {
@@ -119,5 +127,27 @@ import stylex from "@stylexjs/stylex"`);
 
     
    import stylex from "@stylexjs/stylex"`);
+
+    assertOffsetCorrect(`/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree. ♥️♥️♥️
+ *
+ *
+ */
+
+import stylex from '@stylexjs/stylex';
+import Card from './Card';
+import {
+  globalTokens as $,
+  spacing,
+  text,
+  scales,
+} from './globalTokens.stylex';
+import Counter from './Counter';
+
+const HOMEPAGE = 'https://stylexjs.com';
+`);
   });
 });

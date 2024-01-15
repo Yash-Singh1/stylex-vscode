@@ -43,6 +43,8 @@ import { calculateStartOffset, parse } from "./lib/parser";
 import { defaultSettings, type UserConfiguration } from "./lib/settings";
 import { CSSVirtualDocument } from "./lib/virtual-document";
 import { getCSSLanguageService } from "vscode-css-languageservice";
+import { inspect } from "node:util";
+import { StringAsBytes } from "./lib/string-bytes";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -219,6 +221,7 @@ let hasDiagnosticRelatedInformationCapability = false;
   connection.onCompletion(async (params, token) => {
     const textDocument = documents.get(params.textDocument.uri)!;
     const text = textDocument.getText();
+    const byteRepresentation = new StringAsBytes(text);
 
     const settings = await getDocumentSettings(params.textDocument.uri);
     const languageId = await getLanguageId(
@@ -274,10 +277,10 @@ let hasDiagnosticRelatedInformationCapability = false;
         "*"(node) {
           if ("span" in node) {
             const startSpanRelative = textDocument.positionAt(
-              node.span.start - moduleStart,
+              byteRepresentation.slice(0, node.span.start - moduleStart).length,
             );
             const endSpanRelative = textDocument.positionAt(
-              node.span.end - moduleStart,
+              byteRepresentation.slice(0, node.span.end - moduleStart).length,
             );
 
             if (
@@ -385,10 +388,10 @@ let hasDiagnosticRelatedInformationCapability = false;
         StringLiteral(node, state) {
           if (state && state.callInside && state.propertyName !== "content") {
             const startSpanRelative = textDocument.positionAt(
-              node.span.start - moduleStart,
+              byteRepresentation.slice(0, node.span.start - moduleStart).length,
             );
             const endSpanRelative = textDocument.positionAt(
-              node.span.end - moduleStart,
+              byteRepresentation.slice(0, node.span.end - moduleStart).length,
             );
 
             if (
@@ -481,6 +484,7 @@ let hasDiagnosticRelatedInformationCapability = false;
   connection.onDocumentColor(async (params, token) => {
     const textDocument = documents.get(params.textDocument.uri)!;
     const text = textDocument.getText();
+    const byteRepresentation = new StringAsBytes(text);
 
     const settings = await getDocumentSettings(params.textDocument.uri);
     const languageId = await getLanguageId(
@@ -532,10 +536,16 @@ let hasDiagnosticRelatedInformationCapability = false;
         range: {
           // Offsets to keep colors inside the quotes
           start: textDocument.positionAt(
-            node.span.start - moduleStart + startOffset + 1,
+            byteRepresentation.slice(
+              0,
+              node.span.start - moduleStart + startOffset + 1,
+            ).length,
           ),
           end: textDocument.positionAt(
-            node.span.end - moduleStart + startOffset - 1,
+            byteRepresentation.slice(
+              0,
+              node.span.end - moduleStart + startOffset - 1,
+            ).length,
           ),
         },
         color: culoriColorToVscodeColor(color),
@@ -696,7 +706,7 @@ let hasDiagnosticRelatedInformationCapability = false;
     colorCache.delete(params.textDocument.uri);
     colorCache.set(params.textDocument.uri, colors);
 
-    console.log("Found colors", colors);
+    console.log("Found colors", inspect(colors, { depth: 10 }));
 
     return colors;
   });
@@ -774,6 +784,7 @@ let hasDiagnosticRelatedInformationCapability = false;
   connection.onHover(async (params, token) => {
     const document = documents.get(params.textDocument.uri)!;
     const text = document.getText();
+    const byteRepresentation = new StringAsBytes(text);
 
     const settings = await getDocumentSettings(params.textDocument.uri);
     const languageId = await getLanguageId(params.textDocument.uri, document);
@@ -822,10 +833,10 @@ let hasDiagnosticRelatedInformationCapability = false;
         "*"(node) {
           if ("span" in node) {
             const startSpanRelative = document.positionAt(
-              node.span.start - moduleStart,
+              byteRepresentation.slice(0, node.span.start - moduleStart).length,
             );
             const endSpanRelative = document.positionAt(
-              node.span.end - moduleStart,
+              byteRepresentation.slice(0, node.span.end - moduleStart).length,
             );
 
             if (
@@ -848,21 +859,23 @@ let hasDiagnosticRelatedInformationCapability = false;
         VariableDeclaration(node) {
           if (node.kind === "const") {
             for (const declaration of node.declarations) {
-              handleRequires(declaration, stateManager, settings);
+              if (!declaration.init || declaration.id.type !== "Identifier")
+                continue;
 
-              // TODO: Support more static things for constants
-              if (
-                declaration.init &&
-                declaration.init.type === "StringLiteral" &&
-                declaration.id.type === "Identifier"
-              ) {
+              const result = evaluate(declaration.init, stateManager);
+
+              if (result.static && "value" in result) {
                 stateManager.addConstantToScope(
                   declaration.id.value,
-                  declaration.init.value,
+                  result.value,
                 );
               }
             }
           }
+        },
+
+        VariableDeclarator(node) {
+          handleRequires(node, stateManager, settings);
         },
 
         ImportDeclaration(node) {
@@ -954,10 +967,12 @@ let hasDiagnosticRelatedInformationCapability = false;
             }
 
             const startSpanRelative = document.positionAt(
-              node.key.span.start - moduleStart,
+              byteRepresentation.slice(0, node.key.span.start - moduleStart)
+                .length,
             );
             const endSpanRelative = document.positionAt(
-              node.key.span.end - moduleStart,
+              byteRepresentation.slice(0, node.key.span.end - moduleStart)
+                .length,
             );
 
             // Don't use out of range nodes
@@ -1151,8 +1166,16 @@ let hasDiagnosticRelatedInformationCapability = false;
                   value: ["```css", ...cssLines, "```"].join("\n"),
                 },
                 range: {
-                  start: document.positionAt(node.key.span.start - moduleStart),
-                  end: document.positionAt(node.key.span.end - moduleStart),
+                  start: document.positionAt(
+                    byteRepresentation.slice(
+                      0,
+                      node.key.span.start - moduleStart,
+                    ).length,
+                  ),
+                  end: document.positionAt(
+                    byteRepresentation.slice(0, node.key.span.end - moduleStart)
+                      .length,
+                  ),
                 },
               };
 

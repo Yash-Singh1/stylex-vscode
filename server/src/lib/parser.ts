@@ -1,6 +1,6 @@
 import type { Module } from "@swc/types";
 import type { CancellationToken } from "vscode-languageserver";
-import type { TextDocument } from "vscode-languageserver-textdocument";
+import { TextDocument } from "vscode-languageserver-textdocument";
 
 type Parser = typeof import("../../node_modules/@swc/wasm-web");
 
@@ -40,12 +40,14 @@ export function parse({
   });
 }
 
-export function calculateStartOffset(textDocument: {
-  getText(range: {
-    start: { line: number; character: number };
-    end: { line: number; character: number };
-  }): string;
-}) {
+export function calculateStartOffset(textDocument: TextDocument) {
+  const startOffset = calculateTextStartOffset(textDocument);
+
+  return new TextEncoder().encode(textDocument.getText().slice(0, startOffset))
+    .length;
+}
+
+function calculateTextStartOffset(textDocument: TextDocument) {
   let startOffset = 0;
   let line = textDocument
     .getText({
