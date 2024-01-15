@@ -275,7 +275,7 @@ let hasDiagnosticRelatedInformationCapability = false;
         },
 
         "*"(node) {
-          if ("span" in node) {
+          if ("span" in node && node.type !== "VariableDeclaration") {
             const startSpanRelative = textDocument.positionAt(
               byteRepresentation.byteOffsetToCharIndex(
                 node.span.start - moduleStart,
@@ -827,7 +827,7 @@ let hasDiagnosticRelatedInformationCapability = false;
         },
 
         "*"(node) {
-          if ("span" in node) {
+          if ("span" in node && node.type !== "VariableDeclaration") {
             const startSpanRelative = document.positionAt(
               byteRepresentation.byteOffsetToCharIndex(
                 node.span.start - moduleStart,
@@ -875,6 +875,8 @@ let hasDiagnosticRelatedInformationCapability = false;
         },
 
         VariableDeclarator(node) {
+          console.log(node);
+
           handleRequires(node, stateManager, settings);
         },
 

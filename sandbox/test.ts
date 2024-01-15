@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import stylex2 from "@stylexjs/stylex";
 import { createTheme as createThemee } from "@stylexjs/stylex";
 import { colors, spacing } from "./tokens.stylex";
+const stylex3 = require("@stylexjs/stylex");
 
 // A constant can be used to avoid repeating the media query
 const DARK = "@media (prefers-color-scheme: dark)";
@@ -19,14 +20,14 @@ export const dracula = createThemee(colors, {
   lineColor: "red",
 });
 
-const styles = stylex.create({
+const styles = stylex3.create({
   root: {
     width: "100%",
     maxWidth: 800,
     minHeight: 40,
   },
   child: {
-    backgroundColor: "",
+    backgroundColor: "red",
     content: "",
     marginBlock: "1rem",
   },
