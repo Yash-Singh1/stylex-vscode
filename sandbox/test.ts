@@ -27,7 +27,7 @@ const styles = stylex.create({
   },
   child: {
     backgroundColor: "",
-    content: '',
+    content: "",
     marginBlock: "1rem",
   },
 });
