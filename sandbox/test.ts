@@ -81,7 +81,7 @@ export const spacing = stylex.defineVars({
 
 const MEDIA_MOBILE = "@media (max-width: 700px)";
 
-const s = stylex.create({
+const s = stylex3.create({
   h1: {
     fontSize: "2rem",
     lineHeight: spacing.small,

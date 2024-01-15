@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.6
+
+- Hotfix for CJS imports not working due to backtracking variable declarations
+
 ## 0.0.5
 
 - Move default modules to settings
