@@ -95,6 +95,7 @@
     "watch": "concurrently \"tsc -w -p ./client\" \"tsup server/src/server.ts --no-splitting --out-dir server/out --watch --ignore-watch client\"",
     "lint": "eslint ./client/src ./server/src --ext .ts,.tsx && prettier --check \"**/*.{ts,tsx,js,json,md}\"",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+    "package": "vsce package --baseImagesUrl https://stylexvscode.pages.dev/",
     "//test": "sh ./scripts/e2e.sh",
     "test": "cd server; npm run test; cd ..",
     "type-check": "tsc -p ./client --noEmit && tsc -p ./server --noEmit && tsc -p . --noEmit",
@@ -112,10 +113,9 @@
     "mkdirp": "^3.0.1",
     "mocha": "^10.2.0",
     "nodemon": "^3.0.2",
-    "typescript": "^5.3.3"
-  },
-  "dependencies": {
-    "prettier": "^3.1.1",
-    "tsup": "^8.0.1"
+    "prettier": "^3.2.2",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vsce": "^2.15.0"
   }
 }
