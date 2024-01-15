@@ -428,7 +428,7 @@ export async function _walk<StateType>(
           | NodeType
           | { expression: NodeType; spread?: boolean }
         )[]) {
-          if (ignore.includes(`${key}.${i++}`)) {
+          if (ignore.includes(`${key}.${i++}`) || child == null) {
             continue;
           }
 

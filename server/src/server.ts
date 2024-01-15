@@ -277,10 +277,14 @@ let hasDiagnosticRelatedInformationCapability = false;
         "*"(node) {
           if ("span" in node) {
             const startSpanRelative = textDocument.positionAt(
-              byteRepresentation.slice(0, node.span.start - moduleStart).length,
+              byteRepresentation.byteOffsetToCharIndex(
+                node.span.start - moduleStart,
+              ),
             );
             const endSpanRelative = textDocument.positionAt(
-              byteRepresentation.slice(0, node.span.end - moduleStart).length,
+              byteRepresentation.byteOffsetToCharIndex(
+                node.span.end - moduleStart,
+              ),
             );
 
             if (
@@ -388,10 +392,14 @@ let hasDiagnosticRelatedInformationCapability = false;
         StringLiteral(node, state) {
           if (state && state.callInside && state.propertyName !== "content") {
             const startSpanRelative = textDocument.positionAt(
-              byteRepresentation.slice(0, node.span.start - moduleStart).length,
+              byteRepresentation.byteOffsetToCharIndex(
+                node.span.start - moduleStart,
+              ),
             );
             const endSpanRelative = textDocument.positionAt(
-              byteRepresentation.slice(0, node.span.end - moduleStart).length,
+              byteRepresentation.byteOffsetToCharIndex(
+                node.span.end - moduleStart,
+              ),
             );
 
             if (
@@ -416,8 +424,6 @@ let hasDiagnosticRelatedInformationCapability = false;
                 params.position.character - startSpanRelative.character,
               ),
             );
-
-            console.log(doc.getText(), relativePosition);
 
             completions = cssLanguageService
               .doComplete(
@@ -536,16 +542,14 @@ let hasDiagnosticRelatedInformationCapability = false;
         range: {
           // Offsets to keep colors inside the quotes
           start: textDocument.positionAt(
-            byteRepresentation.slice(
-              0,
+            byteRepresentation.byteOffsetToCharIndex(
               node.span.start - moduleStart + startOffset + 1,
-            ).length,
+            ),
           ),
           end: textDocument.positionAt(
-            byteRepresentation.slice(
-              0,
+            byteRepresentation.byteOffsetToCharIndex(
               node.span.end - moduleStart + startOffset - 1,
-            ).length,
+            ),
           ),
         },
         color: culoriColorToVscodeColor(color),
@@ -575,14 +579,6 @@ let hasDiagnosticRelatedInformationCapability = false;
               value: resultingValue.value,
               span: resultingValue.span,
             });
-            if (typeNode.literal.type === "TemplateLiteral") {
-              console.log(
-                "Template literal",
-                typeNode.literal,
-                resultingValue,
-                color,
-              );
-            }
             if (color) colors.push(color);
           }
         }
@@ -833,10 +829,14 @@ let hasDiagnosticRelatedInformationCapability = false;
         "*"(node) {
           if ("span" in node) {
             const startSpanRelative = document.positionAt(
-              byteRepresentation.slice(0, node.span.start - moduleStart).length,
+              byteRepresentation.byteOffsetToCharIndex(
+                node.span.start - moduleStart,
+              ),
             );
             const endSpanRelative = document.positionAt(
-              byteRepresentation.slice(0, node.span.end - moduleStart).length,
+              byteRepresentation.byteOffsetToCharIndex(
+                node.span.end - moduleStart,
+              ),
             );
 
             if (
@@ -967,12 +967,14 @@ let hasDiagnosticRelatedInformationCapability = false;
             }
 
             const startSpanRelative = document.positionAt(
-              byteRepresentation.slice(0, node.key.span.start - moduleStart)
-                .length,
+              byteRepresentation.byteOffsetToCharIndex(
+                node.key.span.start - moduleStart,
+              ),
             );
             const endSpanRelative = document.positionAt(
-              byteRepresentation.slice(0, node.key.span.end - moduleStart)
-                .length,
+              byteRepresentation.byteOffsetToCharIndex(
+                node.key.span.end - moduleStart,
+              ),
             );
 
             // Don't use out of range nodes
@@ -1167,14 +1169,14 @@ let hasDiagnosticRelatedInformationCapability = false;
                 },
                 range: {
                   start: document.positionAt(
-                    byteRepresentation.slice(
-                      0,
+                    byteRepresentation.byteOffsetToCharIndex(
                       node.key.span.start - moduleStart,
-                    ).length,
+                    ),
                   ),
                   end: document.positionAt(
-                    byteRepresentation.slice(0, node.key.span.end - moduleStart)
-                      .length,
+                    byteRepresentation.byteOffsetToCharIndex(
+                      node.key.span.end - moduleStart,
+                    ),
                   ),
                 },
               };
