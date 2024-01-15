@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.8
+
+- Support all CSS grammar restrictions on variables
+- Support keyframes inside of `defineVars` (<https://github.com/facebook/stylex/pull/315>)
+
 ## 0.0.7
 
 - Fix completions in the middle of a string

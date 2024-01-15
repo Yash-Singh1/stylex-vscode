@@ -1,7 +1,7 @@
 {
   "name": "stylex-language-server",
   "description": "StyleX language server that runs on node.",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "type": "module",
   "author": "Yash Singh",
   "license": "MIT",
