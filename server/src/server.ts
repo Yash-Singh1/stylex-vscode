@@ -192,12 +192,61 @@ let hasDiagnosticRelatedInformationCapability = false;
   });
 
   const cssLanguageService = getCSSLanguageService();
+  const STYLEX_CUSTOM_PROPERTY = "stylex-lsp-custom-property";
+
   cssLanguageService.configure({
     completion: {
       completePropertyWithSemicolon: false,
       triggerPropertyValueCompletion: false,
     },
   });
+  cssLanguageService.setDataProviders(true, [
+    {
+      provideAtDirectives() {
+        return [];
+      },
+      providePseudoClasses() {
+        return [];
+      },
+      providePseudoElements() {
+        return [];
+      },
+      provideProperties() {
+        return [
+          {
+            name: STYLEX_CUSTOM_PROPERTY,
+            restrictions: [
+              "enum",
+              "time",
+              "timing-function",
+              "box",
+              "color",
+              "repeat",
+              "url",
+              "line-style",
+              "image",
+              "length",
+              "identifier",
+              "number(0-1)",
+              "number",
+              "font",
+              "string",
+              "angle",
+              "integer",
+              "property",
+              "percentage",
+              "unicode-range",
+              "line-width",
+              "geometry-box",
+              "position",
+              "positon",
+              "shape",
+            ],
+          },
+        ];
+      },
+    },
+  ]);
 
   function calculateKeyValue(
     node: KeyValueProperty,
@@ -378,9 +427,7 @@ let hasDiagnosticRelatedInformationCapability = false;
               }
               return {
                 ...state,
-                // TODO: Manually pull out all possible completions for variables
-                // We choose background because it provides a good amount of property types supported in the grammar
-                propertyName: "background",
+                propertyName: STYLEX_CUSTOM_PROPERTY,
               };
             } else {
               return {
