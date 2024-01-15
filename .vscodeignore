@@ -1,13 +1,16 @@
 .vscode/**
+.github/**
 **/*.ts
 **/*.map
 .gitignore
 **/tsconfig.json
 **/tsconfig.base.json
 CONTRIBUTING.md
+LOCAL.md
 ROADMAP.md
 .travis.yml
 node_modules/**
+client/testFixture
 client/node_modules/**
 !client/node_modules/vscode-jsonrpc/**
 !client/node_modules/vscode-languageclient/**
