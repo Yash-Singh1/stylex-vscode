@@ -47,8 +47,11 @@
           "items": {
             "type": "string"
           },
-          "default": [],
-          "markdownDescription": "List of custom module names that should be considered as the StyleX package for detecting StyleX workspaces and imports. Default is just `[\"@stylexjs/stylex\"]`."
+          "default": [
+            "@stylexjs/stylex",
+            "stylex"
+          ],
+          "markdownDescription": "List of custom module names that should be considered as the StyleX package for detecting StyleX workspaces and imports. Default is `[\"@stylexjs/stylex\", \"stylex\"]`."
         },
         "stylex.useRemForFontSize": {
           "type": "boolean",

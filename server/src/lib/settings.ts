@@ -9,7 +9,7 @@ export interface UserConfiguration {
 
 export const defaultSettings = {
   includedLanguages: {},
-  aliasModuleNames: [],
+  aliasModuleNames: ["@stylexjs/stylex", "stylex"],
   hover: true,
   suggestions: true,
   colorDecorators: true,

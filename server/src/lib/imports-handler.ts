@@ -7,10 +7,7 @@ export function handleImports(
   state: StateManager,
   config: UserConfiguration,
 ) {
-  if (
-    node.source.value !== "@stylexjs/stylex" &&
-    !config.aliasModuleNames.includes(node.source.value)
-  ) {
+  if (!config.aliasModuleNames.includes(node.source.value)) {
     return;
   }
 
@@ -53,10 +50,7 @@ export function handleRequires(
   }
 
   if (
-    !(
-      node.init.arguments[0].expression.value === "@stylexjs/stylex" ||
-      config.aliasModuleNames.includes(node.init.arguments[0].expression.value)
-    )
+    !config.aliasModuleNames.includes(node.init.arguments[0].expression.value)
   ) {
     return;
   }
