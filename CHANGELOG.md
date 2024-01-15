@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.7
+
+- Fix completions in the middle of a string
+
 ## 0.0.6
 
 - Hotfix for CJS imports not working due to backtracking variable declarations
