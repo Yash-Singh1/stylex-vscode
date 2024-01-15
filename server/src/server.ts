@@ -949,7 +949,15 @@ let hasDiagnosticRelatedInformationCapability = false;
               verifiedImport)
           ) {
             const callerID =
-              parent?.type === "VariableDeclarator" ? parent.id : null;
+              parent?.type === "VariableDeclarator"
+                ? parent.id
+                : state.callerIdentifier &&
+                    state.callerIdentifier.startsWith("1")
+                  ? {
+                      type: "Identifier",
+                      value: state.callerIdentifier.slice(1),
+                    }
+                  : null;
 
             if (verifiedImport === "create" || verifiedImport === "keyframes") {
               return {
@@ -988,29 +996,52 @@ let hasDiagnosticRelatedInformationCapability = false;
         },
 
         async KeyValueProperty(node, state) {
-          let key: string | undefined;
+          if (state && state.callInside) {
+            let key: string | undefined;
 
-          if (
-            node.key.type === "Identifier" ||
-            node.key.type === "StringLiteral"
-          ) {
-            key = node.key.value;
-          } else if (node.key.type === "Computed") {
-            if (node.key.expression.type === "StringLiteral") {
-              key = node.key.expression.value;
-            } else if (node.key.expression.type === "Identifier") {
-              key = stateManager
-                .getConstantFromScope(node.key.expression.value)
-                ?.toString();
+            if (
+              node.key.type === "Identifier" ||
+              node.key.type === "StringLiteral"
+            ) {
+              key = node.key.value;
+            } else if (node.key.type === "Computed") {
+              if (node.key.expression.type === "StringLiteral") {
+                key = node.key.expression.value;
+              } else if (node.key.expression.type === "Identifier") {
+                key = stateManager
+                  .getConstantFromScope(node.key.expression.value)
+                  ?.toString();
+              }
             }
-          }
 
-          if (state && key && state.callInside) {
+            if (!key) return;
+
             if (
               node.value.type === "ObjectExpression" ||
               node.value.type === "ArrowFunctionExpression"
             ) {
               return { ...state, parentClass: [...state.parentClass, key] };
+            }
+
+            if (
+              node.value.type === "CallExpression" &&
+              ((node.value.callee.type === "Identifier" &&
+                stateManager.verifyNamedImport(node.value.callee.value) ===
+                  "keyframes") ||
+                (node.value.callee.type === "MemberExpression" &&
+                  node.value.callee.object.type === "Identifier" &&
+                  node.value.callee.property.type === "Identifier" &&
+                  stateManager.verifyStylexIdentifier(
+                    node.value.callee.object.value,
+                  ) &&
+                  node.value.callee.property.value === "keyframes"))
+            ) {
+              return {
+                ...state,
+                parentClass: [],
+                callInside: "keyframes",
+                callerIdentifier: "1" + key,
+              };
             }
 
             const startSpanRelative = document.positionAt(
