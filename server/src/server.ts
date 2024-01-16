@@ -172,6 +172,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 
   const colorCache = new Map<string, ColorInformation[]>();
   const parseCache = new Map<string, Module>();
+  const bytePrefixCache = new Map<string, StringAsBytes>();
 
   const virtualDocumentFactory = new CSSVirtualDocument();
 
@@ -180,10 +181,12 @@ let hasDiagnosticRelatedInformationCapability = false;
     documentSettings.delete(e.document.uri);
     colorCache.delete(e.document.uri);
     parseCache.delete(e.document.uri);
+    bytePrefixCache.delete(e.document.uri);
   });
 
   documents.onDidChangeContent((e) => {
     parseCache.delete(e.document.uri);
+    bytePrefixCache.delete(e.document.uri);
   });
 
   connection.onDidOpenTextDocument((_change) => {
@@ -271,7 +274,9 @@ let hasDiagnosticRelatedInformationCapability = false;
   connection.onCompletion(async (params, token) => {
     const textDocument = documents.get(params.textDocument.uri)!;
     const text = textDocument.getText();
-    const byteRepresentation = new StringAsBytes(text);
+    const byteRepresentation = bytePrefixCache.has(params.textDocument.uri)
+      ? bytePrefixCache.get(params.textDocument.uri)!
+      : new StringAsBytes(text);
 
     const settings = await getDocumentSettings(params.textDocument.uri);
     const languageId = await getLanguageId(
@@ -537,7 +542,9 @@ let hasDiagnosticRelatedInformationCapability = false;
   connection.onDocumentColor(async (params, token) => {
     const textDocument = documents.get(params.textDocument.uri)!;
     const text = textDocument.getText();
-    const byteRepresentation = new StringAsBytes(text);
+    const byteRepresentation = bytePrefixCache.has(params.textDocument.uri)
+      ? bytePrefixCache.get(params.textDocument.uri)!
+      : new StringAsBytes(text);
 
     const settings = await getDocumentSettings(params.textDocument.uri);
     const languageId = await getLanguageId(
@@ -827,7 +834,9 @@ let hasDiagnosticRelatedInformationCapability = false;
   connection.onHover(async (params, token) => {
     const document = documents.get(params.textDocument.uri)!;
     const text = document.getText();
-    const byteRepresentation = new StringAsBytes(text);
+    const byteRepresentation = bytePrefixCache.has(params.textDocument.uri)
+      ? bytePrefixCache.get(params.textDocument.uri)!
+      : new StringAsBytes(text);
 
     const settings = await getDocumentSettings(params.textDocument.uri);
     const languageId = await getLanguageId(params.textDocument.uri, document);

@@ -6,12 +6,14 @@ export class StringAsBytes {
   private decoder: TextDecoder;
   private encoder: TextEncoder;
   private prefixArray: Uint32Array;
+  private originalString: string;
 
   constructor(string: string) {
     this.decoder = new TextDecoder();
     this.encoder = new TextEncoder();
     this.string = this.encoder.encode(string);
     this.prefixArray = new Uint32Array(0);
+    this.originalString = string;
 
     this.calculatePrefixArray(string);
   }
@@ -20,12 +22,19 @@ export class StringAsBytes {
    * Calculates the prefix array for the string.
    */
   private calculatePrefixArray(string: string) {
-    const prefixArray = new Uint32Array(this.string.length + 1);
+    const prefixArray = new Uint32Array(
+      Math.ceil(this.string.length / 5000) + 1,
+    );
 
-    for (let i = 1; i <= this.string.length; i++) {
+    prefixArray[0] = 0;
+    for (let i = 1; i <= Math.ceil(this.string.length / 5000); ++i) {
+      console.log(string.slice((i - 1) * 5000, i * 5000));
       prefixArray[i] =
-        prefixArray[i - 1] + this.encoder.encode(string[i - 1]).length;
+        prefixArray[i - 1] +
+        this.encoder.encode(string.slice((i - 1) * 5000, i * 5000)).length;
     }
+
+    console.log(prefixArray);
 
     this.prefixArray = prefixArray;
   }
@@ -43,17 +52,24 @@ export class StringAsBytes {
     while (l <= r) {
       const m = Math.floor((l + r) / 2);
 
-      if (this.prefixArray[m] < byteOffset) {
-        l = m + 1;
-      } else if (this.prefixArray[m] > byteOffset) {
-        r = m - 1;
-      } else {
+      if (this.prefixArray[m] <= byteOffset) {
         ans = m;
-        break;
+        l = m + 1;
+      } else {
+        r = m - 1;
       }
     }
 
-    return ans;
+    let curByteOffset = this.prefixArray[ans];
+    let strPosition = Math.min(ans * 5000, this.string.length);
+    while (curByteOffset < byteOffset) {
+      curByteOffset += this.encoder.encode(
+        this.originalString[strPosition],
+      ).length;
+      strPosition++;
+    }
+
+    return strPosition;
   }
 
   /**
