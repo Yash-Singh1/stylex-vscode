@@ -22,19 +22,17 @@ export class StringAsBytes {
    * Calculates the prefix array for the string.
    */
   private calculatePrefixArray(string: string) {
+    // Break the string into chunks of 5000 characters and calculate the prefix sum array
     const prefixArray = new Uint32Array(
       Math.ceil(this.string.length / 5000) + 1,
     );
 
     prefixArray[0] = 0;
     for (let i = 1; i <= Math.ceil(this.string.length / 5000); ++i) {
-      console.log(string.slice((i - 1) * 5000, i * 5000));
       prefixArray[i] =
         prefixArray[i - 1] +
         this.encoder.encode(string.slice((i - 1) * 5000, i * 5000)).length;
     }
-
-    console.log(prefixArray);
 
     this.prefixArray = prefixArray;
   }
@@ -45,6 +43,7 @@ export class StringAsBytes {
    * @returns Char index
    */
   public byteOffsetToCharIndex(byteOffset: number) {
+    // Calculate the lower bound for the current byte offset
     let l = 0;
     let r = this.prefixArray.length;
     let ans = -1;
@@ -60,6 +59,7 @@ export class StringAsBytes {
       }
     }
 
+    // Calculate the char index for the current byte offset (should take max of 5000 iterations)
     let curByteOffset = this.prefixArray[ans];
     let strPosition = Math.min(ans * 5000, this.string.length);
     while (curByteOffset < byteOffset) {
