@@ -511,6 +511,7 @@ let hasDiagnosticRelatedInformationCapability = false;
               return newTextEdit;
             });
 
+            // TODO: Preprocess itemDefaults
             itemDefaults = cssCompletions.itemDefaults;
 
             console.log("Found completions", completions);
@@ -523,7 +524,7 @@ let hasDiagnosticRelatedInformationCapability = false;
       { propertyName: undefined, propertyDeep: 0, callInside: undefined },
     );
 
-    return { items: completions, isIncomplete: true, itemDefaults };
+    return { items: completions, isIncomplete: true };
   });
 
   async function getLanguageId(uri: string, document: TextDocument) {
