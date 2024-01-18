@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.9
+
+- Decrease memory usage for byte offset to string index data structure
+
 ## 0.0.8
 
 - Support all CSS grammar restrictions on variables
