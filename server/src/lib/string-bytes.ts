@@ -33,7 +33,8 @@ export class StringAsBytes {
     for (let i = 1; i <= Math.ceil(this.string.length / CHUNK_SIZE); ++i) {
       prefixArray[i] =
         prefixArray[i - 1] +
-        this.encoder.encode(string.slice((i - 1) * CHUNK_SIZE, i * CHUNK_SIZE)).length;
+        this.encoder.encode(string.slice((i - 1) * CHUNK_SIZE, i * CHUNK_SIZE))
+          .length;
     }
 
     this.prefixArray = prefixArray;

@@ -129,7 +129,7 @@ function isExcluded(file: string, folder: WorkspaceFolder) {
 
 async function validateJSON(uri: Uri) {
   try {
-    const json = Buffer.from(await workspace.fs.readFile(uri)).toString('utf8');
+    const json = Buffer.from(await workspace.fs.readFile(uri)).toString("utf8");
     if (
       json.includes("stylex") ||
       workspace
