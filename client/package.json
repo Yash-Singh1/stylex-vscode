@@ -16,8 +16,12 @@
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
+    "@types/braces": "^3.0.4",
     "@types/node": "^20.10.6",
     "@types/vscode": "^1.75.1",
-    "@vscode/test-electron": "^2.3.8"
+    "@vscode/test-electron": "^2.3.8",
+    "braces": "^3.0.2",
+    "minimatch": "^9.0.3",
+    "normalize-path": "^3.0.0"
   }
 }

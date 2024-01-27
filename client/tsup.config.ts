@@ -2,8 +2,11 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
   external: ["vscode"],
-  banner: { js: "//shaylovestypescriptggs server code start" },
+  splitting: false,
+  banner: { js: "//shaylovestypescriptggs client code start" },
   entry: ["src/extension.ts"],
   sourcemap: true,
   outDir: "out",
+  bundle: true,
+  clean: true,
 });

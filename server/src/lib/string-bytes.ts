@@ -1,6 +1,8 @@
 // String as bytes class as workaround for SWC giving bytes offset for span
 // @see https://github.com/swc-project/swc/issues/1366#issuecomment-1576294504
 
+const CHUNK_SIZE = 1000;
+
 export class StringAsBytes {
   private string: Uint8Array;
   private decoder: TextDecoder;
@@ -22,16 +24,16 @@ export class StringAsBytes {
    * Calculates the prefix array for the string.
    */
   private calculatePrefixArray(string: string) {
-    // Break the string into chunks of 5000 characters and calculate the prefix sum array
+    // Break the string into chunks of CHUNK_SIZE characters and calculate the prefix sum array
     const prefixArray = new Uint32Array(
-      Math.ceil(this.string.length / 5000) + 1,
+      Math.ceil(this.string.length / CHUNK_SIZE) + 1,
     );
 
     prefixArray[0] = 0;
-    for (let i = 1; i <= Math.ceil(this.string.length / 5000); ++i) {
+    for (let i = 1; i <= Math.ceil(this.string.length / CHUNK_SIZE); ++i) {
       prefixArray[i] =
         prefixArray[i - 1] +
-        this.encoder.encode(string.slice((i - 1) * 5000, i * 5000)).length;
+        this.encoder.encode(string.slice((i - 1) * CHUNK_SIZE, i * CHUNK_SIZE)).length;
     }
 
     this.prefixArray = prefixArray;
@@ -59,9 +61,9 @@ export class StringAsBytes {
       }
     }
 
-    // Calculate the char index for the current byte offset (should take max of 5000 iterations)
+    // Calculate the char index for the current byte offset (should take max of CHUNK_SIZE iterations)
     let curByteOffset = this.prefixArray[ans];
-    let strPosition = Math.min(ans * 5000, this.string.length);
+    let strPosition = Math.min(ans * CHUNK_SIZE, this.string.length);
     while (curByteOffset < byteOffset) {
       curByteOffset += this.encoder.encode(
         this.originalString[strPosition],

@@ -1,5 +1,15 @@
-import * as path from "path";
-import { workspace, ExtensionContext } from "vscode";
+import * as path from "node:path";
+import { minimatch } from "minimatch";
+import {
+  workspace,
+  type ExtensionContext,
+  type WorkspaceFolder,
+  type Uri,
+  RelativePattern,
+  type TextDocument,
+} from "vscode";
+import normalizePath from "normalize-path";
+import * as braces from "braces";
 
 import {
   LanguageClient,
@@ -8,13 +18,25 @@ import {
   TransportKind,
 } from "vscode-languageclient/node";
 
-let client: LanguageClient;
+const clients: Map<string, LanguageClient> = new Map();
+let ctx: ExtensionContext = null;
 
-export function activate(context: ExtensionContext) {
-  console.log("StyleX VSCode extension activated.");
+const CLIENT_ID = "stylex";
+const CLIENT_NAME = "StyleX Language Server";
+
+const TRIGGER_GLOB =
+  "**/{package.json,package-lock.json,*.stylex.js,*.stylex.ts,*.stylex.tsx,*.stylex.jsx}";
+
+function createWorkspaceClient(folder: WorkspaceFolder) {
+  if (clients.has(folder.uri.toString())) {
+    return;
+  }
+
+  // Placeholder to prevent multiple servers booting
+  clients.set(folder.uri.toString(), null);
 
   // The server is implemented in node
-  const serverModule = context.asAbsolutePath(
+  const serverModule = ctx.asAbsolutePath(
     path.join("server", "out", "server.cjs"),
   );
 
@@ -53,29 +75,165 @@ export function activate(context: ExtensionContext) {
         ...Object.entries(includedLanguages)
           .filter(([_newLang, oldLang]) => supportedLanguages.includes(oldLang))
           .map(([newLang]) => newLang),
-      ].map((lang) => ({ schema: "file", language: lang })),
+      ].map((lang) => ({
+        schema: "file",
+        language: lang,
+        pattern: normalizePath(
+          `${folder.uri.fsPath.replace(/[[]\{\}]/g, "?")}/**/*`,
+        ),
+      })),
     ],
-    synchronize: {
-      // Notify the server about file changes to '.clientrc files contained in the workspace
-      fileEvents: workspace.createFileSystemWatcher("**/.clientrc"),
+    connectionOptions: {
+      maxRestartCount: 5,
     },
+    workspaceFolder: folder,
   };
 
   // Create the language client and start the client.
-  client = new LanguageClient(
-    "stylex",
-    "StyleX Language Server",
+  const languageClient = new LanguageClient(
+    CLIENT_ID,
+    CLIENT_NAME,
     serverOptions,
     clientOptions,
   );
-
-  // Start the client. This will also launch the server
-  client.start();
+  clients.set(folder.uri.toString(), languageClient);
+  languageClient.start();
 }
 
-export function deactivate(): Thenable<void> | undefined {
-  if (!client) {
-    return undefined;
+// From Tailwind CSS Intellisense exclude logic
+
+function getExcludePatterns(folder: WorkspaceFolder) {
+  return [
+    ...Object.entries(
+      workspace.getConfiguration("files", folder).get("exclude"),
+    )
+      .filter(([, value]) => value === true)
+      .map(([key]) => key)
+      .filter(Boolean),
+    "**/node_modules",
+  ];
+}
+
+// TODO: Have custom configuration for excluded files
+function isExcluded(file: string, folder: WorkspaceFolder) {
+  const excludePatterns = getExcludePatterns(folder);
+
+  for (const pattern of excludePatterns) {
+    if (minimatch(file, path.join(folder.uri.fsPath, pattern))) {
+      return true;
+    }
   }
-  return client.stop();
+
+  return false;
+}
+
+async function validateJSON(uri: Uri) {
+  try {
+    const json = Buffer.from(await workspace.fs.readFile(uri)).toString('utf8');
+    if (
+      json.includes("stylex") ||
+      workspace
+        .getConfiguration("stylex", uri)
+        .get<string[]>("aliasModuleNames")
+        .some((alias) => json.includes(alias))
+    ) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+}
+
+async function runIfStyleXWorkspace(folder: WorkspaceFolder) {
+  console.log("CHecking if run needed", folder);
+
+  const excludePatterns = getExcludePatterns(folder);
+
+  const exclude = `{${excludePatterns
+    .flatMap((pattern) => braces.expand(pattern))
+    .join(",")
+    .replace(/{/g, "%7B")
+    .replace(/}/g, "%7D")}}`;
+
+  console.log("Exclude patterns", exclude, excludePatterns);
+  const searchingFiles = await workspace.findFiles(
+    new RelativePattern(folder, TRIGGER_GLOB),
+    exclude,
+  );
+
+  console.log("Searching files", searchingFiles);
+
+  for (const uri of searchingFiles) {
+    console.log(uri.fsPath, uri.fsPath.endsWith(".json"));
+    if (uri.fsPath.endsWith(".json")) {
+      if (await validateJSON(uri)) {
+        return createWorkspaceClient(folder);
+      }
+    } else {
+      return createWorkspaceClient(folder);
+    }
+  }
+}
+
+export function activate(context: ExtensionContext) {
+  ctx = context;
+
+  console.info("StyleX VSCode extension activated.");
+
+  function handler(uri: Uri) {
+    console.log("Triggered", uri);
+
+    const folder = workspace.getWorkspaceFolder(uri);
+    if (!folder || isExcluded(uri.fsPath, folder)) {
+      return;
+    }
+
+    if (uri.fsPath.endsWith(".json") && validateJSON(uri)) {
+      createWorkspaceClient(folder);
+    }
+  }
+
+  const searchedFolders = new Set<string>();
+
+  function didOpenTextDocument(document: TextDocument) {
+    console.log("Opened document", document);
+
+    // We are only interested in language mode text
+    if (document.uri.scheme !== "file") {
+      return;
+    }
+
+    const uri = document.uri;
+    const folder = workspace.getWorkspaceFolder(uri);
+
+    // Files outside a folder can't be handled. This might depend on the language.
+    // Single file languages like JSON might handle files outside the workspace folders.
+    if (!folder) {
+      return;
+    }
+
+    if (searchedFolders.has(folder.uri.toString())) {
+      return;
+    }
+
+    searchedFolders.add(folder.uri.toString());
+
+    runIfStyleXWorkspace(folder);
+  }
+
+  workspace.textDocuments.forEach(didOpenTextDocument);
+  ctx.subscriptions.push(workspace.onDidOpenTextDocument(didOpenTextDocument));
+
+  const watcher = workspace.createFileSystemWatcher(TRIGGER_GLOB);
+  watcher.onDidChange(handler);
+  watcher.onDidCreate(handler);
+  watcher.onDidDelete(handler);
+}
+
+export async function deactivate(): Promise<void> | undefined {
+  for (const client of clients.values()) {
+    await client.stop();
+  }
 }
