@@ -101,3 +101,22 @@ function calculateTextStartOffset(textDocument: TextDocument) {
 
   return startOffset;
 }
+
+export function calculateKeyValue(
+  node: KeyValueProperty,
+  stateManager: StateManager,
+) {
+  return node.key.type === "Identifier"
+    ? node.key.value
+    : node.key.type === "Computed"
+      ? node.key.expression.type === "StringLiteral"
+        ? node.key.expression.value
+        : node.key.expression.type === "Identifier"
+          ? <string>(
+              stateManager
+                .getConstantFromScope(node.key.expression.value)
+                ?.toString()
+            )
+          : "--custom"
+      : "--custom";
+}

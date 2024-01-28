@@ -5,12 +5,9 @@ import {
   InitializeParams,
   DidChangeConfigurationNotification,
   TextDocumentSyncKind,
-  InitializeResult,
-  ColorInformation,
-  Hover,
+  type InitializeResult,
+  type Hover,
   MarkupKind,
-  CompletionItem,
-  CompletionList,
 } from "vscode-languageserver/node";
 
 import { readFileSync } from "node:fs";
@@ -22,16 +19,7 @@ const wasmBuffer = readFileSync(
 
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { States, walk } from "./lib/walk";
-import { culoriColorToVscodeColor, getColorFromValue } from "./lib/color-logic";
 import { type Color, formatHex8, formatRgb, formatHsl } from "culori";
-import type {
-  Identifier,
-  KeyValueProperty,
-  Module,
-  StringLiteral,
-  TsLiteralType,
-  TsUnionType,
-} from "@swc/types";
 import { evaluate } from "./lib/evaluate";
 import StateManager from "./lib/state-manager";
 import { handleImports, handleRequires } from "./lib/imports-handler";
@@ -42,21 +30,22 @@ import stylexBabelPlugin from "@stylexjs/babel-plugin";
 import * as prettier from "prettier";
 import { calculateStartOffset, parse } from "./lib/parser";
 import { defaultSettings, type UserConfiguration } from "./lib/settings";
-import { CSSVirtualDocument } from "./lib/virtual-document";
-import { getCSSLanguageService } from "vscode-css-languageservice";
-import { inspect } from "node:util";
-import { StringAsBytes } from "./lib/string-bytes";
+import { StringAsBytes, getByteRepresentation } from "./lib/string-bytes";
+import ServerState from "./lib/server-state";
+import onCompletion from "./capabilities/completions";
+import onDocumentColor from "./capabilities/document-colors";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
+
+export type Connection = typeof connection;
 
 // Create a simple text document manager.
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
-let hasDiagnosticRelatedInformationCapability = false;
 
 // Wrap server in async functions to allow "top-level await"
 (async function () {
@@ -87,11 +76,6 @@ let hasDiagnosticRelatedInformationCapability = false;
     );
     hasWorkspaceFolderCapability = !!(
       capabilities.workspace && !!capabilities.workspace.workspaceFolders
-    );
-    hasDiagnosticRelatedInformationCapability = !!(
-      capabilities.textDocument &&
-      capabilities.textDocument.publishDiagnostics &&
-      capabilities.textDocument.publishDiagnostics.relatedInformation
     );
 
     const result: InitializeResult = {
@@ -170,361 +154,24 @@ let hasDiagnosticRelatedInformationCapability = false;
     return result;
   }
 
-  const colorCache = new Map<string, ColorInformation[]>();
-  const parseCache = new Map<string, Module>();
-  const bytePrefixCache = new Map<string, StringAsBytes>();
-
-  const virtualDocumentFactory = new CSSVirtualDocument();
+  const serverState = new ServerState();
 
   // Clear cache for documents that closed
   documents.onDidClose((e) => {
     documentSettings.delete(e.document.uri);
-    colorCache.delete(e.document.uri);
-    parseCache.delete(e.document.uri);
-    bytePrefixCache.delete(e.document.uri);
+    serverState.colorCache.delete(e.document.uri);
+    serverState.parserCache.delete(e.document.uri);
+    serverState.bytePrefixCache.delete(e.document.uri);
   });
 
   documents.onDidChangeContent((e) => {
-    parseCache.delete(e.document.uri);
-    bytePrefixCache.delete(e.document.uri);
+    serverState.parserCache.delete(e.document.uri);
+    serverState.bytePrefixCache.delete(e.document.uri);
   });
 
   connection.onDidOpenTextDocument((_change) => {
     // Monitored files have change in VSCode
     connection.console.log("We received a file change event");
-  });
-
-  const cssLanguageService = getCSSLanguageService();
-  const STYLEX_CUSTOM_PROPERTY = "stylex-lsp-custom-property";
-
-  cssLanguageService.configure({
-    completion: {
-      completePropertyWithSemicolon: false,
-      triggerPropertyValueCompletion: false,
-    },
-  });
-  cssLanguageService.setDataProviders(true, [
-    {
-      provideAtDirectives() {
-        return [];
-      },
-      providePseudoClasses() {
-        return [];
-      },
-      providePseudoElements() {
-        return [];
-      },
-      provideProperties() {
-        return [
-          {
-            name: STYLEX_CUSTOM_PROPERTY,
-            restrictions: [
-              "enum",
-              "time",
-              "timing-function",
-              "box",
-              "color",
-              "repeat",
-              "url",
-              "line-style",
-              "image",
-              "length",
-              "identifier",
-              "number(0-1)",
-              "number",
-              "font",
-              "string",
-              "angle",
-              "integer",
-              "property",
-              "percentage",
-              "unicode-range",
-              "line-width",
-              "geometry-box",
-              "position",
-              "positon",
-              "shape",
-            ],
-          },
-        ];
-      },
-    },
-  ]);
-
-  function calculateKeyValue(
-    node: KeyValueProperty,
-    stateManager: StateManager,
-  ) {
-    return <string>(
-      (node.key.type === "Identifier"
-        ? node.key.value
-        : node.key.type === "Computed"
-          ? node.key.expression.type === "StringLiteral"
-            ? node.key.expression.value
-            : node.key.expression.type === "Identifier"
-              ? stateManager
-                  .getConstantFromScope(node.key.expression.value)
-                  ?.toString()
-              : "--custom"
-          : "--custom")
-    );
-  }
-
-  // This handler provides the completion items.
-  connection.onCompletion(async (params, token) => {
-    const textDocument = documents.get(params.textDocument.uri)!;
-    const text = textDocument.getText();
-    const byteRepresentation = bytePrefixCache.has(params.textDocument.uri)
-      ? bytePrefixCache.get(params.textDocument.uri)!
-      : new StringAsBytes(text);
-
-    const settings = await getDocumentSettings(params.textDocument.uri);
-    const languageId = await getLanguageId(
-      params.textDocument.uri,
-      textDocument,
-    );
-
-    if (!settings.suggestions) return null;
-
-    let parseResult;
-    try {
-      if (parseCache.has(params.textDocument.uri)) {
-        parseResult = parseCache.get(params.textDocument.uri)!;
-      } else {
-        parseResult = await parse({
-          source: text,
-          languageId,
-          parser: init,
-          token,
-        });
-        parseCache.set(params.textDocument.uri, parseResult);
-      }
-    } catch (e) {
-      console.log(e);
-      return [];
-    }
-
-    let completions: CompletionItem[] = [];
-    let itemDefaults: CompletionList["itemDefaults"];
-    const stateManager = new StateManager();
-    let moduleStart = 0;
-
-    await walk<{
-      propertyName: string | undefined;
-      callInside: string | null | undefined;
-      propertyDeep: number;
-    }>(
-      parseResult,
-      {
-        Module(node) {
-          moduleStart = node.span.start - calculateStartOffset(textDocument);
-        },
-
-        ImportDeclaration(node) {
-          handleImports(node, stateManager, settings);
-
-          return false;
-        },
-
-        VariableDeclarator(node) {
-          handleRequires(node, stateManager, settings);
-        },
-
-        "*"(node) {
-          if ("span" in node && node.type !== "VariableDeclaration") {
-            const startSpanRelative = textDocument.positionAt(
-              byteRepresentation.byteOffsetToCharIndex(
-                node.span.start - moduleStart,
-              ),
-            );
-            const endSpanRelative = textDocument.positionAt(
-              byteRepresentation.byteOffsetToCharIndex(
-                node.span.end - moduleStart,
-              ),
-            );
-
-            if (
-              params.position.line > endSpanRelative.line ||
-              params.position.line < startSpanRelative.line
-            ) {
-              return false;
-            }
-          }
-        },
-
-        WithStatement() {
-          return false;
-        },
-
-        CallExpression(node, state) {
-          let verifiedImport: string | undefined;
-
-          if (
-            (node.callee.type === "MemberExpression" &&
-              node.callee.object.type === "Identifier" &&
-              stateManager.verifyStylexIdentifier(node.callee.object.value) &&
-              node.callee.property.type === "Identifier" &&
-              (verifiedImport = node.callee.property.value)) ||
-            (node.callee.type === "Identifier" &&
-              [
-                "create",
-                "createTheme",
-                "defineVars",
-                "keyframes",
-                "firstThatWorks",
-              ].includes(
-                (verifiedImport = stateManager.verifyNamedImport(
-                  node.callee.value,
-                )) || "",
-              ) &&
-              verifiedImport)
-          ) {
-            if (verifiedImport === "create" || verifiedImport === "keyframes") {
-              return {
-                ...state,
-                callInside: verifiedImport,
-                propertyDeep: 1,
-              };
-            } else if (
-              verifiedImport === "createTheme" ||
-              verifiedImport === "defineVars"
-            ) {
-              return {
-                state: {
-                  ...state,
-                  callInside: verifiedImport,
-                  propertyDeep: 1,
-                },
-                ignore: [
-                  verifiedImport === "createTheme" ? "arguments.0" : "",
-                  "callee",
-                ],
-              };
-            } else if (verifiedImport === "firstThatWorks") {
-              return;
-            }
-          }
-
-          return {
-            ...state,
-            callInside: null,
-          };
-        },
-
-        KeyValueProperty(node, state) {
-          if (state && state.callInside) {
-            if (
-              (state.callInside === "create" ||
-                state.callInside === "keyframes") &&
-              state.propertyDeep === 2
-            ) {
-              return {
-                ...state,
-                propertyName: calculateKeyValue(node, stateManager),
-                propertyDeep: 3,
-              };
-            } else if (
-              state.callInside === "createTheme" ||
-              state.callInside === "defineVars"
-            ) {
-              if (node.value.type === "ObjectExpression") {
-                state.propertyDeep += 1;
-              }
-              return {
-                ...state,
-                propertyName: STYLEX_CUSTOM_PROPERTY,
-              };
-            } else {
-              return {
-                ...state,
-                propertyDeep: state.propertyDeep + 1,
-              };
-            }
-          }
-        },
-
-        StringLiteral(node, state) {
-          if (state && state.callInside && state.propertyName !== "content") {
-            const startSpanRelative = textDocument.positionAt(
-              byteRepresentation.byteOffsetToCharIndex(
-                node.span.start - moduleStart,
-              ),
-            );
-            const endSpanRelative = textDocument.positionAt(
-              byteRepresentation.byteOffsetToCharIndex(
-                node.span.end - moduleStart,
-              ),
-            );
-
-            if (
-              params.position.line > endSpanRelative.line ||
-              params.position.line < startSpanRelative.line ||
-              (params.position.line === endSpanRelative.line &&
-                params.position.character > endSpanRelative.character) ||
-              (params.position.line === startSpanRelative.line &&
-                params.position.character < startSpanRelative.character)
-            ) {
-              return false;
-            }
-
-            const doc = virtualDocumentFactory.createVirtualDocument(
-              dashifyFn(state.propertyName || "--custom"),
-              node.value,
-            );
-
-            const relativePosition = doc.positionAt(
-              virtualDocumentFactory.mapOffsetToVirtualOffset(
-                doc,
-                params.position.character - startSpanRelative.character,
-              ),
-            );
-
-            const cssCompletions = cssLanguageService.doComplete(
-              doc,
-              relativePosition,
-              cssLanguageService.parseStylesheet(doc),
-              {
-                completePropertyWithSemicolon: false,
-                triggerPropertyValueCompletion: true,
-              },
-            );
-
-            completions = cssCompletions.items.map((item) => {
-              const newTextEdit = item;
-              if (newTextEdit.textEdit) {
-                if ("range" in newTextEdit.textEdit) {
-                  newTextEdit.textEdit.range.start.line +=
-                    params.position.line - relativePosition.line;
-                  newTextEdit.textEdit.range.end.line +=
-                    params.position.line - relativePosition.line;
-                  newTextEdit.textEdit.range.start.character +=
-                    params.position.character - relativePosition.character;
-                  newTextEdit.textEdit.range.end.character +=
-                    params.position.character - relativePosition.character;
-                } else {
-                  console.log(
-                    "[WARN] Mapping InsertReplaceEdit is not supported yet.",
-                  );
-                  delete newTextEdit.textEdit;
-                }
-              }
-              return newTextEdit;
-            });
-
-            // TODO: Preprocess itemDefaults
-            itemDefaults = cssCompletions.itemDefaults;
-
-            console.log("Found completions", completions);
-
-            return States.EXIT;
-          }
-        },
-      },
-      token,
-      { propertyName: undefined, propertyDeep: 0, callInside: undefined },
-    );
-
-    return { items: completions, isIncomplete: true };
   });
 
   async function getLanguageId(uri: string, document: TextDocument) {
@@ -538,232 +185,78 @@ let hasDiagnosticRelatedInformationCapability = false;
     return languageId;
   }
 
-  // We might want to limit this to color restricted properties to allow further reliability (idk)
-  // @see https://github.com/microsoft/vscode-css-languageservice/blob/main/src/data/webCustomData.ts
-  connection.onDocumentColor(async (params, token) => {
-    const textDocument = documents.get(params.textDocument.uri)!;
-    const text = textDocument.getText();
-    const byteRepresentation = bytePrefixCache.has(params.textDocument.uri)
-      ? bytePrefixCache.get(params.textDocument.uri)!
-      : new StringAsBytes(text);
+  // This handler provides the completion items.
+  connection.onCompletion(async (params, token) => {
+    const textDocument = documents.get(params.textDocument.uri);
+    if (!textDocument) {
+      return { items: [], isIncomplete: true };
+    }
 
-    const settings = await getDocumentSettings(params.textDocument.uri);
+    const text = textDocument.getText();
     const languageId = await getLanguageId(
       params.textDocument.uri,
       textDocument,
     );
+    const settings = await getDocumentSettings(params.textDocument.uri);
 
-    if (!settings.colorDecorators) return null;
+    const byteRepresentation = getByteRepresentation(
+      params.textDocument.uri,
+      text,
+      serverState,
+    );
 
-    let parseResult;
-    try {
-      if (parseCache.has(params.textDocument.uri)) {
-        parseResult = parseCache.get(params.textDocument.uri)!;
-      } else {
-        parseResult = await parse({
-          source: text,
-          languageId,
-          parser: init,
-          token,
-        });
-        parseCache.set(params.textDocument.uri, parseResult);
-      }
-    } catch (e) {
-      console.log(e);
+    serverState.setupCSSLanguageService();
+
+    return await onCompletion({
+      languageId,
+      params,
+      token,
+      parserInit: init,
+      serverState,
+      settings,
+      textDocument,
+      byteRepresentation,
+    });
+  });
+
+  // We might want to limit this to color restricted properties to allow further reliability (idk)
+  // @see https://github.com/microsoft/vscode-css-languageservice/blob/main/src/data/webCustomData.ts
+  connection.onDocumentColor(async (params, token) => {
+    const textDocument = documents.get(params.textDocument.uri);
+    if (!textDocument) {
       return [];
     }
 
-    const colors: ColorInformation[] = [];
+    const text = textDocument.getText();
+    const languageId = await getLanguageId(
+      params.textDocument.uri,
+      textDocument,
+    );
+    const settings = await getDocumentSettings(params.textDocument.uri);
 
-    const stateManager = new StateManager();
-
-    const startOffset = calculateStartOffset(textDocument);
-    let moduleStart = 0;
-
-    function handleStringLiteral(
-      node: StringLiteral | { value: string; span: StringLiteral["span"] },
-    ) {
-      const color = getColorFromValue(node.value);
-
-      if (
-        color === null ||
-        typeof color === "string" ||
-        (color.alpha ?? 1) === 0
-      ) {
-        return false;
-      }
-
-      return {
-        range: {
-          // Offsets to keep colors inside the quotes
-          start: textDocument.positionAt(
-            byteRepresentation.byteOffsetToCharIndex(
-              node.span.start - moduleStart + startOffset + 1,
-            ),
-          ),
-          end: textDocument.positionAt(
-            byteRepresentation.byteOffsetToCharIndex(
-              node.span.end - moduleStart + startOffset - 1,
-            ),
-          ),
-        },
-        color: culoriColorToVscodeColor(color),
-      };
-    }
-
-    function handleTypeStrings(typeNode: TsUnionType | TsLiteralType) {
-      if (typeNode.type === "TsUnionType") {
-        for (const unionValue of typeNode.types) {
-          if (unionValue.type === "TsLiteralType") {
-            handleTypeStrings(unionValue);
-          }
-        }
-      } else {
-        if (
-          typeNode.literal.type === "StringLiteral" ||
-          typeNode.literal.type === "TemplateLiteral"
-        ) {
-          const resultingValue = evaluate(typeNode.literal, stateManager);
-
-          if (
-            resultingValue.static &&
-            "value" in resultingValue &&
-            typeof resultingValue.value === "string"
-          ) {
-            const color = handleStringLiteral({
-              value: resultingValue.value,
-              span: resultingValue.span,
-            });
-            if (color) colors.push(color);
-          }
-        }
-      }
-    }
-
-    await walk<{ callInside: string | null | undefined }>(
-      parseResult,
-      {
-        Module(node) {
-          moduleStart = node.span.start;
-        },
-
-        ImportDeclaration(node) {
-          handleImports(node, stateManager, settings);
-
-          return false;
-        },
-
-        VariableDeclarator(node) {
-          handleRequires(node, stateManager, settings);
-        },
-
-        TsTypeReference(node) {
-          if (
-            node.typeName.type === "Identifier" &&
-            ["StyleXStyles", "StaticStyles"].includes(
-              stateManager.verifyNamedImport(node.typeName.value) || "",
-            ) &&
-            node.typeParams
-          ) {
-            node.typeParams.params.forEach((param) => {
-              if (param.type === "TsTypeLiteral") {
-                param.members.forEach((member) => {
-                  if (
-                    member.type === "TsPropertySignature" &&
-                    member.typeAnnotation &&
-                    (member.typeAnnotation.typeAnnotation.type ===
-                      "TsLiteralType" ||
-                      member.typeAnnotation.typeAnnotation.type ===
-                        "TsUnionType")
-                  ) {
-                    handleTypeStrings(member.typeAnnotation.typeAnnotation);
-                  }
-                });
-              }
-            });
-          }
-        },
-
-        CallExpression(node) {
-          let verifiedImport: string | undefined;
-
-          if (
-            (node.callee.type === "MemberExpression" &&
-              node.callee.property.type === "Identifier" &&
-              (node.callee.property.value === "create" ||
-                node.callee.property.value === "createTheme" ||
-                node.callee.property.value === "defineVars" ||
-                node.callee.property.value === "keyframes") &&
-              node.callee.object.type === "Identifier" &&
-              stateManager.verifyStylexIdentifier(node.callee.object.value)) ||
-            (node.callee.type === "Identifier" &&
-              ["create", "createTheme", "defineVars", "keyframes"].includes(
-                (verifiedImport = stateManager.verifyNamedImport(
-                  node.callee.value,
-                )) || "",
-              ) &&
-              verifiedImport)
-          ) {
-            return {
-              callInside:
-                node.callee.type === "Identifier"
-                  ? verifiedImport
-                  : (<Identifier>node.callee.property).value,
-            };
-          }
-        },
-
-        KeyValueProperty(node, state) {
-          if (
-            state &&
-            state.callInside != null &&
-            (node.value.type === "StringLiteral" ||
-              node.value.type === "CallExpression" ||
-              node.value.type === "ArrayExpression" ||
-              node.value.type === "TemplateLiteral")
-          ) {
-            const resultingValue = evaluate(node.value, stateManager);
-
-            if (resultingValue.static && "value" in resultingValue) {
-              if (typeof resultingValue.value === "string") {
-                const color = handleStringLiteral({
-                  value: resultingValue.value,
-                  span: resultingValue.span,
-                });
-                if (color) colors.push(color);
-              } else if (Array.isArray(resultingValue.value)) {
-                for (const element of resultingValue.value) {
-                  if (
-                    element.static &&
-                    "value" in element &&
-                    typeof element.value === "string"
-                  ) {
-                    const color = handleStringLiteral({
-                      value: element.value,
-                      span: element.span,
-                    });
-                    if (color) colors.push(color);
-                  }
-                }
-              }
-            }
-          }
-        },
-      },
-      token,
-      { callInside: null },
+    const byteRepresentation = getByteRepresentation(
+      params.textDocument.uri,
+      text,
+      serverState,
     );
 
-    colorCache.delete(params.textDocument.uri);
-    colorCache.set(params.textDocument.uri, colors);
+    serverState.setupCSSLanguageService();
 
-    console.log("Found colors", inspect(colors, { depth: 10 }));
-
-    return colors;
+    return await onDocumentColor({
+      languageId,
+      params,
+      token,
+      parserInit: init,
+      serverState,
+      settings,
+      textDocument,
+      byteRepresentation,
+    });
   });
 
   connection.onColorPresentation((params) => {
-    const prevColors = colorCache.get(params.textDocument.uri) || [];
+    const prevColors =
+      serverState.colorCache.get(params.textDocument.uri) || [];
 
     // Binary Search for color we are looking for
     let left = 0,
@@ -835,9 +328,11 @@ let hasDiagnosticRelatedInformationCapability = false;
   connection.onHover(async (params, token) => {
     const document = documents.get(params.textDocument.uri)!;
     const text = document.getText();
-    const byteRepresentation = bytePrefixCache.has(params.textDocument.uri)
-      ? bytePrefixCache.get(params.textDocument.uri)!
-      : new StringAsBytes(text);
+    const byteRepresentation = getByteRepresentation(
+      params.textDocument.uri,
+      text,
+      serverState,
+    );
 
     const settings = await getDocumentSettings(params.textDocument.uri);
     const languageId = await getLanguageId(params.textDocument.uri, document);
@@ -848,8 +343,8 @@ let hasDiagnosticRelatedInformationCapability = false;
 
     let parseResult;
     try {
-      if (parseCache.has(params.textDocument.uri)) {
-        parseResult = parseCache.get(params.textDocument.uri)!;
+      if (serverState.parserCache.has(params.textDocument.uri)) {
+        parseResult = serverState.parserCache.get(params.textDocument.uri)!;
       } else {
         parseResult = await parse({
           source: text,
@@ -857,7 +352,7 @@ let hasDiagnosticRelatedInformationCapability = false;
           parser: init,
           token,
         });
-        parseCache.set(params.textDocument.uri, parseResult);
+        serverState.parserCache.set(params.textDocument.uri, parseResult);
       }
     } catch (e) {
       console.log(e);

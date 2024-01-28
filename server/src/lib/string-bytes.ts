@@ -1,7 +1,23 @@
 // String as bytes class as workaround for SWC giving bytes offset for span
 // @see https://github.com/swc-project/swc/issues/1366#issuecomment-1576294504
 
+import type ServerState from "./server-state";
+
 const CHUNK_SIZE = 1000;
+
+export function getByteRepresentation(
+  uri: string,
+  text: string,
+  serverState: ServerState,
+) {
+  if (serverState.bytePrefixCache.has(uri)) {
+    return serverState.bytePrefixCache.get(uri)!;
+  } else {
+    const byteRepresentation = new StringAsBytes(text);
+    serverState.bytePrefixCache.set(uri, byteRepresentation);
+    return byteRepresentation;
+  }
+}
 
 export class StringAsBytes {
   private string: Uint8Array;
