@@ -90,7 +90,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile:client": "cd client/; tsup; cd ..",
-    "compile:server": "tsup server/src/server.ts --no-splitting --out-dir server/out",
+    "compile:server": "cd server/; tsup; cd ..",
     "compile": "concurrently \"npm run compile:client\" \"npm run compile:server\"",
     "watch": "concurrently \"tsc -w -p ./client\" \"tsup server/src/server.ts --no-splitting --out-dir server/out --watch --ignore-watch client\"",
     "lint": "eslint ./client/src ./server/src --ext .ts,.tsx && prettier --check \"**/*.{ts,tsx,js,json,md}\"",

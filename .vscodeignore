@@ -20,7 +20,6 @@ client/node_modules/**
 !client/node_modules/{semver,lru-cache,yallist}/**
 server/node_modules/**
 server/tests/
-!server/node_modules/@stylexjs/**
 !server/node_modules/@swc/**
 !server/node_modules/vscode*/**
 !server/node_modules/prettier/**
@@ -29,7 +28,7 @@ server/tests/
 scripts/
 cdn/
 sandbox/
-tsup.config.ts
+**/tsup.config.ts
 .prettierrc
 .eslintignore
 .eslintrc.js
