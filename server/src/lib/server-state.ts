@@ -28,6 +28,7 @@ export default class ServerState implements IServerState {
     if (this.cssLanguageServiceIsSetup) return;
 
     this.cssLanguageService = getCSSLanguageService();
+    this.cssLanguageServiceIsSetup = true;
     this.cssLanguageService.configure({
       completion: {
         completePropertyWithSemicolon: false,
@@ -81,6 +82,5 @@ export default class ServerState implements IServerState {
         },
       },
     ]);
-    this.cssLanguageServiceIsSetup = true;
   }
 }

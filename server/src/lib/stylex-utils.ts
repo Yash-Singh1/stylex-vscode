@@ -1,6 +1,5 @@
 import dashifyFn from "@stylexjs/shared/lib/utils/dashify";
 import transformValueFn from "@stylexjs/shared/lib/transform-value";
-import stylexBabelPlugin from "@stylexjs/babel-plugin";
 
 export const dashify = (
   dashifyFn as unknown as typeof import("@stylexjs/shared/lib/utils/dashify")

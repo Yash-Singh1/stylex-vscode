@@ -1,4 +1,4 @@
-interface StateManagerImplementation {
+interface IStateManager {
   addStylexIdentifier(identifier: string): void;
   verifyStylexIdentifier(identifier: string): boolean;
   addNamedImport(localIdentifier: string, importedIdentifier: string): void;
@@ -9,7 +9,7 @@ interface StateManagerImplementation {
   getConstantFromScope(identifier: string): any;
 }
 
-export default class StateManager implements StateManagerImplementation {
+export default class StateManager implements IStateManager {
   private stylexIdentifier: Set<string> = new Set();
   private namedImportMap: Map<string, Set<string>> = new Map();
   private localIdentifierMap: Map<string, string> = new Map();

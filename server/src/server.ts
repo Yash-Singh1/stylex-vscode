@@ -6,8 +6,6 @@ import {
   DidChangeConfigurationNotification,
   TextDocumentSyncKind,
   type InitializeResult,
-  type Hover,
-  MarkupKind,
 } from "vscode-languageserver/node";
 
 import { readFileSync } from "node:fs";
@@ -18,22 +16,14 @@ const wasmBuffer = readFileSync(
 );
 
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { States, walk } from "./lib/walk";
-import { type Color, formatHex8, formatRgb, formatHsl } from "culori";
-import { evaluate } from "./lib/evaluate";
-import StateManager from "./lib/state-manager";
-import { handleImports, handleRequires } from "./lib/imports-handler";
-import dashify from "@stylexjs/shared/lib/utils/dashify";
-import transformValue from "@stylexjs/shared/lib/transform-value";
-import stylexBabelPlugin from "@stylexjs/babel-plugin";
 
-import * as prettier from "prettier";
-import { calculateStartOffset, parse } from "./lib/parser";
 import { defaultSettings, type UserConfiguration } from "./lib/settings";
-import { StringAsBytes, getByteRepresentation } from "./lib/string-bytes";
+import { getByteRepresentation } from "./lib/string-bytes";
 import ServerState from "./lib/server-state";
 import onCompletion from "./capabilities/completions";
 import onDocumentColor from "./capabilities/document-colors";
+import onColorPresentation from "./capabilities/color-presentation";
+import onHover from "./capabilities/hover";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -52,19 +42,6 @@ let hasWorkspaceFolderCapability = false;
   // Import swc and initialize the WASM module
   const init = await import("@swc/wasm-web/wasm-web.js");
   await init.default(wasmBuffer);
-
-  const dashifyFn = (
-    dashify as unknown as typeof import("@stylexjs/shared/lib/utils/dashify")
-  ).default;
-
-  const _transformValueFn = (
-    transformValue as unknown as typeof import("@stylexjs/shared/lib/transform-value")
-  ).default;
-
-  const transformValueFn: typeof _transformValueFn = function (...args) {
-    if (typeof args[1] === "string" && args[1] === "") return '""';
-    return _transformValueFn(...args);
-  };
 
   connection.onInitialize((params: InitializeParams) => {
     const capabilities = params.capabilities;
@@ -189,7 +166,7 @@ let hasWorkspaceFolderCapability = false;
   connection.onCompletion(async (params, token) => {
     const textDocument = documents.get(params.textDocument.uri);
     if (!textDocument) {
-      return { items: [], isIncomplete: true };
+      return null;
     }
 
     const text = textDocument.getText();
@@ -224,7 +201,7 @@ let hasWorkspaceFolderCapability = false;
   connection.onDocumentColor(async (params, token) => {
     const textDocument = documents.get(params.textDocument.uri);
     if (!textDocument) {
-      return [];
+      return null;
     }
 
     const text = textDocument.getText();
@@ -240,8 +217,6 @@ let hasWorkspaceFolderCapability = false;
       serverState,
     );
 
-    serverState.setupCSSLanguageService();
-
     return await onDocumentColor({
       languageId,
       params,
@@ -254,529 +229,42 @@ let hasWorkspaceFolderCapability = false;
     });
   });
 
-  connection.onColorPresentation((params) => {
-    const prevColors =
-      serverState.colorCache.get(params.textDocument.uri) || [];
-
-    // Binary Search for color we are looking for
-    let left = 0,
-      right = prevColors.length - 1,
-      ans = -1;
-
-    while (left <= right) {
-      const mid = Math.floor((left + right) / 2);
-
-      if (
-        prevColors[mid].range.start.line < params.range.start.line ||
-        (prevColors[mid].range.start.line === params.range.start.line &&
-          prevColors[mid].range.start.character < params.range.start.character)
-      ) {
-        left = mid + 1;
-      } else if (
-        prevColors[mid].range.start.line > params.range.start.line ||
-        (prevColors[mid].range.start.line === params.range.start.line &&
-          prevColors[mid].range.start.character > params.range.start.character)
-      ) {
-        right = mid - 1;
-      } else {
-        ans = mid;
-        break;
-      }
-    }
-
-    const prevColor = ans >= 0 ? prevColors[ans] : undefined;
-
-    const colorValue = prevColor
-      ? ({
-          mode: "rgb",
-          r: prevColor.color.red,
-          g: prevColor.color.green,
-          b: prevColor.color.blue,
-          alpha: prevColor.color.alpha,
-        } satisfies Color)
-      : undefined;
-
-    const newColor = {
-      mode: "rgb",
-      r: params.color.red,
-      g: params.color.green,
-      b: params.color.blue,
-      alpha: params.color.alpha,
-    } satisfies Color;
-    let hexValue = formatHex8(newColor);
-
-    if (
-      params.color.alpha === 1 &&
-      (!colorValue || !colorValue.alpha || colorValue.alpha === 1)
-    ) {
-      hexValue = hexValue.replace(/ff$/, "");
-    }
-
-    return [
-      {
-        label: hexValue,
-      },
-      {
-        label: formatRgb(newColor),
-      },
-      {
-        label: formatHsl(newColor),
-      },
-    ];
+  connection.onColorPresentation(async (params) => {
+    return await onColorPresentation({
+      params,
+      serverState,
+    });
   });
 
   connection.onHover(async (params, token) => {
-    const document = documents.get(params.textDocument.uri)!;
-    const text = document.getText();
+    const textDocument = documents.get(params.textDocument.uri);
+    if (!textDocument) {
+      return null;
+    }
+
+    const text = textDocument.getText();
+    const languageId = await getLanguageId(
+      params.textDocument.uri,
+      textDocument,
+    );
+    const settings = await getDocumentSettings(params.textDocument.uri);
+
     const byteRepresentation = getByteRepresentation(
       params.textDocument.uri,
       text,
       serverState,
     );
 
-    const settings = await getDocumentSettings(params.textDocument.uri);
-    const languageId = await getLanguageId(params.textDocument.uri, document);
-
-    if (!settings.hover) return null;
-
-    const startOffset = calculateStartOffset(document);
-
-    let parseResult;
-    try {
-      if (serverState.parserCache.has(params.textDocument.uri)) {
-        parseResult = serverState.parserCache.get(params.textDocument.uri)!;
-      } else {
-        parseResult = await parse({
-          source: text,
-          languageId,
-          parser: init,
-          token,
-        });
-        serverState.parserCache.set(params.textDocument.uri, parseResult);
-      }
-    } catch (e) {
-      console.log(e);
-      return undefined;
-    }
-
-    let moduleStart = 0;
-
-    const stateManager = new StateManager();
-
-    // Resulting hover
-    let hover: Hover | undefined = undefined;
-
-    await walk<{
-      parentClass: string[];
-      callInside: string | null | undefined;
-      callerIdentifier: string | null | undefined;
-    }>(
-      parseResult,
-      {
-        Module(node) {
-          moduleStart = node.span.start - startOffset;
-          stateManager.pushConstantScope();
-        },
-
-        "*"(node) {
-          if ("span" in node && node.type !== "VariableDeclaration") {
-            const startSpanRelative = document.positionAt(
-              byteRepresentation.byteOffsetToCharIndex(
-                node.span.start - moduleStart,
-              ),
-            );
-            const endSpanRelative = document.positionAt(
-              byteRepresentation.byteOffsetToCharIndex(
-                node.span.end - moduleStart,
-              ),
-            );
-
-            if (
-              params.position.line > endSpanRelative.line ||
-              params.position.line < startSpanRelative.line
-            ) {
-              return false;
-            }
-          }
-        },
-
-        BlockStatement() {
-          stateManager.pushConstantScope();
-        },
-
-        "BlockStatement:exit"() {
-          stateManager.popConstantScope();
-        },
-
-        VariableDeclaration(node) {
-          if (node.kind === "const") {
-            for (const declaration of node.declarations) {
-              if (!declaration.init || declaration.id.type !== "Identifier")
-                continue;
-
-              const result = evaluate(declaration.init, stateManager);
-
-              if (result.static && "value" in result) {
-                stateManager.addConstantToScope(
-                  declaration.id.value,
-                  result.value,
-                );
-              }
-            }
-          }
-        },
-
-        VariableDeclarator(node) {
-          handleRequires(node, stateManager, settings);
-        },
-
-        ImportDeclaration(node) {
-          handleImports(node, stateManager, settings);
-
-          return false;
-        },
-
-        CallExpression(node, state, parent) {
-          let verifiedImport: string | undefined;
-
-          if (
-            (node.callee.type === "MemberExpression" &&
-              node.callee.object.type === "Identifier" &&
-              stateManager.verifyStylexIdentifier(node.callee.object.value) &&
-              node.callee.property.type === "Identifier" &&
-              (verifiedImport = node.callee.property.value)) ||
-            (node.callee.type === "Identifier" &&
-              ["create", "createTheme", "defineVars", "keyframes"].includes(
-                (verifiedImport = stateManager.verifyNamedImport(
-                  node.callee.value,
-                )) || "",
-              ) &&
-              verifiedImport)
-          ) {
-            const callerID =
-              parent?.type === "VariableDeclarator"
-                ? parent.id
-                : state.callerIdentifier &&
-                    state.callerIdentifier.startsWith("1")
-                  ? {
-                      type: "Identifier",
-                      value: state.callerIdentifier.slice(1),
-                    }
-                  : null;
-
-            if (verifiedImport === "create" || verifiedImport === "keyframes") {
-              return {
-                ...state,
-                callInside: verifiedImport,
-                callerIdentifier:
-                  callerID?.type === "Identifier" ? callerID.value : null,
-              };
-            } else if (
-              verifiedImport === "createTheme" ||
-              verifiedImport === "defineVars"
-            ) {
-              return {
-                state: {
-                  ...state,
-                  callInside: verifiedImport,
-                  callerIdentifier:
-                    callerID?.type === "Identifier" ? callerID.value : null,
-                },
-                ignore: [
-                  verifiedImport === "createTheme" ? "arguments.0" : "",
-                  "callee",
-                ],
-              };
-            }
-          }
-
-          return {
-            ...state,
-            callInside: null,
-          };
-        },
-
-        WithStatement() {
-          return false;
-        },
-
-        async KeyValueProperty(node, state) {
-          if (state && state.callInside) {
-            let key: string | undefined;
-
-            if (
-              node.key.type === "Identifier" ||
-              node.key.type === "StringLiteral"
-            ) {
-              key = node.key.value;
-            } else if (node.key.type === "Computed") {
-              if (node.key.expression.type === "StringLiteral") {
-                key = node.key.expression.value;
-              } else if (node.key.expression.type === "Identifier") {
-                key = stateManager
-                  .getConstantFromScope(node.key.expression.value)
-                  ?.toString();
-              }
-            }
-
-            if (!key) return;
-
-            if (
-              node.value.type === "ObjectExpression" ||
-              node.value.type === "ArrowFunctionExpression"
-            ) {
-              return { ...state, parentClass: [...state.parentClass, key] };
-            }
-
-            if (
-              node.value.type === "CallExpression" &&
-              ((node.value.callee.type === "Identifier" &&
-                stateManager.verifyNamedImport(node.value.callee.value) ===
-                  "keyframes") ||
-                (node.value.callee.type === "MemberExpression" &&
-                  node.value.callee.object.type === "Identifier" &&
-                  node.value.callee.property.type === "Identifier" &&
-                  stateManager.verifyStylexIdentifier(
-                    node.value.callee.object.value,
-                  ) &&
-                  node.value.callee.property.value === "keyframes"))
-            ) {
-              return {
-                ...state,
-                parentClass: [],
-                callInside: "keyframes",
-                callerIdentifier: "1" + key,
-              };
-            }
-
-            const startSpanRelative = document.positionAt(
-              byteRepresentation.byteOffsetToCharIndex(
-                node.key.span.start - moduleStart,
-              ),
-            );
-            const endSpanRelative = document.positionAt(
-              byteRepresentation.byteOffsetToCharIndex(
-                node.key.span.end - moduleStart,
-              ),
-            );
-
-            // Don't use out of range nodes
-            if (
-              !(
-                params.position.line >= startSpanRelative.line &&
-                params.position.line <= endSpanRelative.line &&
-                (params.position.line !== startSpanRelative.line ||
-                  params.position.character >= startSpanRelative.character) &&
-                (params.position.line !== endSpanRelative.line ||
-                  params.position.character <= endSpanRelative.character)
-              )
-            ) {
-              return state;
-            }
-
-            const classLine = [
-              ...(state.callInside === "create" ||
-              state.callInside === "keyframes"
-                ? []
-                : [
-                    state.callerIdentifier
-                      ? `.${state.callerIdentifier}`
-                      : ":root",
-                  ]),
-              ...(<string[]>state.parentClass).slice(
-                state.callInside === "create" ||
-                  state.callInside === "keyframes"
-                  ? 0
-                  : 1,
-              ),
-              key,
-            ];
-
-            const atIncluded = classLine.filter((className) =>
-              className.startsWith("@"),
-            );
-            if (state.callInside === "keyframes") {
-              atIncluded.unshift(
-                `@keyframes ${state.callerIdentifier || "unknown"}`,
-              );
-            }
-            const indentation = "  ".repeat(atIncluded.length + 1);
-
-            let cssLines: string[] = [];
-
-            let indentSize = 0;
-
-            for (const atInclude of atIncluded) {
-              cssLines.push(`${"  ".repeat(indentSize++)}${atInclude} {`);
-            }
-
-            const parentSelector =
-              state.callInside === "create"
-                ? "." +
-                  (classLine
-                    .slice(0)
-                    .filter(
-                      (className, index) =>
-                        index === 0 ||
-                        (className !== "default" && className.startsWith(":")),
-                    )
-                    .sort()
-                    .reverse()
-                    .join("") || "unknown")
-                : classLine[0];
-
-            const propertyName =
-              (state.callInside === "create" || state.callInside === "keyframes"
-                ? classLine
-                    .reverse()
-                    .find(
-                      (className) =>
-                        !(
-                          className.startsWith(":") ||
-                          className.startsWith("@") ||
-                          className === "default"
-                        ),
-                    )
-                : `--${state.parentClass[0] || key}`) || "unknown";
-
-            cssLines.push(`${indentation.slice(2)}${parentSelector} {`);
-
-            const staticValue = evaluate(node.value, stateManager);
-            const dashifyPropertyKey = dashifyFn(propertyName);
-
-            const stylexConfig = {
-              dev: true,
-              test: false,
-              classNamePrefix: "",
-              styleResolution: "application-order",
-              useRemForFontSize: settings.useRemForFontSize,
-            } satisfies Parameters<typeof transformValueFn>[2];
-
-            if (staticValue.static) {
-              if ("value" in staticValue) {
-                if (staticValue.value == null) {
-                  cssLines.push(
-                    `${indentation}${dashifyPropertyKey}: initial;`,
-                  );
-                } else if (typeof staticValue.value === "string") {
-                  cssLines.push(
-                    `${indentation}${dashifyPropertyKey}: ${transformValueFn(
-                      propertyName,
-                      staticValue.value,
-                      stylexConfig,
-                    )};`,
-                  );
-                } else if (Array.isArray(staticValue.value)) {
-                  for (const element of staticValue.value) {
-                    if (element.static) {
-                      if ("value" in element) {
-                        if (typeof element.value === "string") {
-                          cssLines.push(
-                            `${indentation}${dashifyPropertyKey}: ${transformValueFn(
-                              propertyName,
-                              element.value,
-                              stylexConfig,
-                            )};`,
-                          );
-                        } else if (element.value == null) {
-                          cssLines.push(
-                            `${indentation}${dashifyPropertyKey}: initial;`,
-                          );
-                        } else if (typeof element.value === "number") {
-                          cssLines.push(
-                            `${indentation}${dashifyPropertyKey}: ${transformValueFn(
-                              propertyName,
-                              element.value,
-                              stylexConfig,
-                            )};`,
-                          );
-                        }
-                      } else if ("id" in element) {
-                        cssLines.push(
-                          `${indentation}${dashifyPropertyKey}: ${
-                            ["animation", "animationName"].includes(
-                              propertyName,
-                            )
-                              ? element.id
-                              : `var(--${element.id})`
-                          };`,
-                        );
-                      }
-                    }
-                  }
-                } else if (typeof staticValue.value === "number") {
-                  cssLines.push(
-                    `${indentation}${dashifyPropertyKey}: ${transformValueFn(
-                      propertyName,
-                      staticValue.value,
-                      stylexConfig,
-                    )};`,
-                  );
-                }
-              } else if ("id" in staticValue) {
-                cssLines.push(
-                  `${indentation}${dashifyPropertyKey}: ${
-                    ["animation", "animationName"].includes(propertyName)
-                      ? staticValue.id
-                      : `var(--${staticValue.id})`
-                  };`,
-                );
-              }
-            }
-
-            cssLines.push(`${indentation.slice(2)}}`);
-
-            for (let atIndex = 0; atIndex < atIncluded.length; ++atIndex) {
-              cssLines.push(`${"  ".repeat(--indentSize)}}`);
-            }
-
-            if (cssLines.length > 2) {
-              cssLines = [
-                (
-                  await prettier.format(
-                    stylexBabelPlugin.processStylexRules(
-                      [["abcd", { ltr: cssLines.join("\n"), rtl: null }, 3000]],
-                      false,
-                    ),
-                    {
-                      parser: "css",
-                    },
-                  )
-                ).trim(),
-              ];
-
-              hover = {
-                contents: {
-                  kind: MarkupKind.Markdown,
-                  value: ["```css", ...cssLines, "```"].join("\n"),
-                },
-                range: {
-                  start: document.positionAt(
-                    byteRepresentation.byteOffsetToCharIndex(
-                      node.key.span.start - moduleStart,
-                    ),
-                  ),
-                  end: document.positionAt(
-                    byteRepresentation.byteOffsetToCharIndex(
-                      node.key.span.end - moduleStart,
-                    ),
-                  ),
-                },
-              };
-
-              console.log("Successfully found hover", hover);
-              return States.EXIT;
-            }
-          }
-
-          return state;
-        },
-      },
+    return await onHover({
+      languageId,
+      params,
       token,
-      { parentClass: [], callInside: null, callerIdentifier: undefined },
-    );
-
-    return hover;
+      parserInit: init,
+      serverState,
+      settings,
+      textDocument,
+      byteRepresentation,
+    });
   });
 
   // Make the text document manager listen on the connection

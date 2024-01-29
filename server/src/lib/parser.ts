@@ -1,6 +1,7 @@
-import type { Module } from "@swc/types";
+import type { KeyValueProperty, Module } from "@swc/types";
 import type { CancellationToken } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
+import type StateManager from './state-manager';
 
 type Parser = typeof import("../../node_modules/@swc/wasm-web");
 

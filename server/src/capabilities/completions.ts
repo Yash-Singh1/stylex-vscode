@@ -50,7 +50,7 @@ async function onCompletion({
     }
   } catch (e) {
     console.log(e);
-    return { items: [], isIncomplete: false };
+    return null;
   }
 
   let completions: CompletionItem[] = [];
