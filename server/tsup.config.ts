@@ -13,4 +13,7 @@ export default defineConfig({
   entry: ["src/server.ts"],
   bundle: true,
   external: ["prettier"],
+  minify: true,
+  minifyIdentifiers: false,
+  minifySyntax: true,
 });

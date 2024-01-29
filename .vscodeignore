@@ -20,7 +20,7 @@ client/node_modules/**
 !client/node_modules/{semver,lru-cache,yallist}/**
 server/node_modules/**
 server/tests/
-!server/node_modules/@swc/**
+!server/node_modules/@swc/wasm-web/**
 !server/node_modules/vscode*/**
 !server/node_modules/prettier/**
 !assets/**

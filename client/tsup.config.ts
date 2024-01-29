@@ -9,4 +9,7 @@ export default defineConfig({
   outDir: "out",
   bundle: true,
   clean: true,
+  minify: true,
+  minifyIdentifiers: false,
+  minifySyntax: true,
 });
