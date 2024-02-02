@@ -20,9 +20,19 @@ client/node_modules/**
 !client/node_modules/{semver,lru-cache,yallist}/**
 server/node_modules/**
 server/tests/
+
+# Swc wasm deps
 !server/node_modules/@swc/wasm-web/**
+
+# Intl segmenter deps
+!server/node_modules/intl-segmenter-polyfill/**
+!server/node_modules/fast-text-encoding/**
+!server/node_modules/@babel/runtime/**
+
+# General vscode deps, prettier doesn't work bundled so putting it out
 !server/node_modules/vscode*/**
 !server/node_modules/prettier/**
+
 !assets/**
 *.vsix
 scripts/

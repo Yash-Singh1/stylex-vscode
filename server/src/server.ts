@@ -15,6 +15,13 @@ const wasmBuffer = readFileSync(
   join(__dirname, "../node_modules/@swc/wasm-web/wasm-web_bg.wasm"),
 );
 
+const segmenterWasm = readFileSync(
+  join(
+    __dirname,
+    "../node_modules/intl-segmenter-polyfill/dist/break_iterator.wasm",
+  ),
+);
+
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { defaultSettings, type UserConfiguration } from "./lib/settings";
@@ -24,6 +31,7 @@ import onCompletion from "./capabilities/completions";
 import onDocumentColor from "./capabilities/document-colors";
 import onColorPresentation from "./capabilities/color-presentation";
 import onHover from "./capabilities/hover";
+import { createIntlSegmenterPolyfill } from "intl-segmenter-polyfill/src/index";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -42,6 +50,8 @@ let hasWorkspaceFolderCapability = false;
   // Import swc and initialize the WASM module
   const init = await import("@swc/wasm-web/wasm-web.js");
   await init.default(wasmBuffer);
+
+  const Segmenter = await createIntlSegmenterPolyfill(segmenterWasm);
 
   connection.onInitialize((params: InitializeParams) => {
     const capabilities = params.capabilities;
@@ -180,6 +190,7 @@ let hasWorkspaceFolderCapability = false;
       params.textDocument.uri,
       text,
       serverState,
+      Segmenter,
     );
 
     serverState.setupCSSLanguageService();
@@ -215,6 +226,7 @@ let hasWorkspaceFolderCapability = false;
       params.textDocument.uri,
       text,
       serverState,
+      Segmenter,
     );
 
     return await onDocumentColor({
@@ -253,6 +265,7 @@ let hasWorkspaceFolderCapability = false;
       params.textDocument.uri,
       text,
       serverState,
+      Segmenter,
     );
 
     return await onHover({

@@ -5,3 +5,4 @@ client/server
 *.vsix
 cdn/
 *.cpuprofile.txt
+.DS_Store
