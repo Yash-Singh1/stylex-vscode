@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "es2020",
+    "target": "es2022",
     "lib": ["es2022", "DOM"],
-    "module": "commonjs",
+    "module": "es2022",
     "moduleResolution": "node",
     "sourceMap": true,
     "strict": true,
@@ -10,6 +10,6 @@
     "rootDir": ".",
     "skipLibCheck": true
   },
-  "include": ["src"],
+  "include": ["tests"],
   "exclude": ["node_modules", ".vscode-test"]
 }

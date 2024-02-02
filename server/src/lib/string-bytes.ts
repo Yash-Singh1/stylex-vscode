@@ -22,57 +22,63 @@ export function getByteRepresentation(
 }
 
 export class StringAsBytes {
-  private string: Uint8Array;
-  private decoder: TextDecoder;
+  private stringLength: number;
   private encoder: TextEncoder;
   private prefixArray: Uint32Array;
-  private originalString: string[];
+  private stringSegments: string[];
   private preStringLength: Uint32Array;
 
   constructor(
     string: string,
     Segmenter: Awaited<ReturnType<typeof createIntlSegmenterPolyfill>>,
   ) {
-    this.decoder = new TextDecoder();
     this.encoder = new TextEncoder();
-    this.string = this.encoder.encode(string);
+    this.stringLength = 0;
     this.prefixArray = new Uint32Array(0);
     this.preStringLength = new Uint32Array(0);
-    this.originalString = [
+    this.stringSegments = [
       ...new Segmenter("en", { granularity: "grapheme" })
         .segment(string)
         .map((part) => part.segment),
     ];
 
-    this.calculatePrefixArray(this.originalString);
+    this.calculatePrefixArray();
   }
 
   /**
    * Calculates the prefix array for the string.
    */
-  private calculatePrefixArray(string: string[]) {
+  private calculatePrefixArray() {
     // Break the string into chunks of CHUNK_SIZE characters and calculate the prefix sum array
     const prefixArray = new Uint32Array(
-      Math.ceil(string.length / CHUNK_SIZE) + 1,
+      Math.ceil(this.stringSegments.length / CHUNK_SIZE) + 1,
     );
     const preStringLength = new Uint32Array(
-      Math.ceil(string.length / CHUNK_SIZE) + 1,
+      Math.ceil(this.stringSegments.length / CHUNK_SIZE) + 1,
     );
 
     prefixArray[0] = 0;
-    for (let i = 1; i <= Math.ceil(string.length / CHUNK_SIZE); ++i) {
+    for (
+      let i = 1;
+      i <= Math.ceil(this.stringSegments.length / CHUNK_SIZE);
+      ++i
+    ) {
       prefixArray[i] =
         prefixArray[i - 1] +
         this.encoder.encode(
-          string.slice((i - 1) * CHUNK_SIZE, i * CHUNK_SIZE).join(""),
+          this.stringSegments
+            .slice((i - 1) * CHUNK_SIZE, i * CHUNK_SIZE)
+            .join(""),
         ).length;
       preStringLength[i] =
         preStringLength[i - 1] +
-        string.slice((i - 1) * CHUNK_SIZE, i * CHUNK_SIZE).join("").length;
+        this.stringSegments.slice((i - 1) * CHUNK_SIZE, i * CHUNK_SIZE).join("")
+          .length;
     }
 
     this.prefixArray = prefixArray;
     this.preStringLength = preStringLength;
+    this.stringLength = prefixArray[prefixArray.length - 1];
   }
 
   /**
@@ -99,33 +105,18 @@ export class StringAsBytes {
 
     // Calculate the char index for the current byte offset (should take max of CHUNK_SIZE iterations)
     let curByteOffset = this.prefixArray[ans];
-    let strPosition = Math.min(ans * CHUNK_SIZE, this.string.length);
+    let strPosition = Math.min(ans * CHUNK_SIZE, this.stringLength);
     let strIndex = strPosition;
     strPosition = this.preStringLength[ans];
 
     while (curByteOffset < byteOffset) {
       curByteOffset += this.encoder.encode(
-        this.originalString[strIndex],
+        this.stringSegments[strIndex],
       ).length;
-      strPosition += this.originalString[strIndex].length;
+      strPosition += this.stringSegments[strIndex].length;
       ++strIndex;
     }
 
     return strPosition;
-  }
-
-  /**
-   * Returns a slice of the string by providing byte indices.
-   * @param from - Byte index to slice from
-   * @param to - Optional byte index to slice to
-   */
-  public slice(from: number, to?: number): string {
-    return this.decoder.decode(
-      new DataView(
-        this.string.buffer,
-        from,
-        to !== undefined ? to - from : undefined,
-      ),
-    );
   }
 }
