@@ -2,7 +2,6 @@
 // @see https://github.com/swc-project/swc/issues/1366#issuecomment-1576294504
 
 import type ServerState from "./server-state";
-import type { createIntlSegmenterPolyfill } from "intl-segmenter-polyfill";
 
 const CHUNK_SIZE = 1000;
 
@@ -10,12 +9,11 @@ export function getByteRepresentation(
   uri: string,
   text: string,
   serverState: ServerState,
-  polyfill: Awaited<ReturnType<typeof createIntlSegmenterPolyfill>>,
 ) {
   if (serverState.bytePrefixCache.has(uri)) {
     return serverState.bytePrefixCache.get(uri)!;
   } else {
-    const byteRepresentation = new StringAsBytes(text, polyfill);
+    const byteRepresentation = new StringAsBytes(text);
     serverState.bytePrefixCache.set(uri, byteRepresentation);
     return byteRepresentation;
   }
@@ -28,19 +26,14 @@ export class StringAsBytes {
   private stringSegments: string[];
   private preStringLength: Uint32Array;
 
-  constructor(
-    string: string,
-    Segmenter: Awaited<ReturnType<typeof createIntlSegmenterPolyfill>>,
-  ) {
+  constructor(string: string) {
     this.encoder = new TextEncoder();
     this.stringLength = 0;
     this.prefixArray = new Uint32Array(0);
     this.preStringLength = new Uint32Array(0);
     this.stringSegments = [
-      ...new Segmenter("en", { granularity: "grapheme" })
-        .segment(string)
-        .map((part) => part.segment),
-    ];
+      ...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(string),
+    ].map((segment) => segment.segment);
 
     this.calculatePrefixArray();
   }

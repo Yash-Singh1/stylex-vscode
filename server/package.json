@@ -29,7 +29,6 @@
     "@types/culori": "^2.0.4",
     "color-name": "^2.0.0",
     "culori": "^3.3.0",
-    "intl-segmenter-polyfill": "^0.4.4",
     "prettier": "^3.2.1",
     "vitest": "^1.2.0",
     "vscode-css-languageservice": "^6.2.11",
