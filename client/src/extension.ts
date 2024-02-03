@@ -147,7 +147,7 @@ async function validateJSON(uri: Uri) {
 }
 
 async function runIfStyleXWorkspace(folder: WorkspaceFolder) {
-  console.log("CHecking if run needed", folder);
+  console.log("Checking if run needed", folder);
 
   const excludePatterns = getExcludePatterns(folder);
 
@@ -166,7 +166,6 @@ async function runIfStyleXWorkspace(folder: WorkspaceFolder) {
   console.log("Searching files", searchingFiles);
 
   for (const uri of searchingFiles) {
-    console.log(uri.fsPath, uri.fsPath.endsWith(".json"));
     if (uri.fsPath.endsWith(".json")) {
       if (await validateJSON(uri)) {
         return createWorkspaceClient(folder);

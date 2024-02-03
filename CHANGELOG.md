@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.10
+
+- Detect StyleX workspaces
+- Minify bundles for performance and reduce in size
+- Fix offsetted colors and hovers when text contains graphemes or surrogate pairs
+
 ## 0.0.9
 
 - Decrease memory usage for byte offset to string index data structure

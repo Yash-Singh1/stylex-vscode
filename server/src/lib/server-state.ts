@@ -11,6 +11,7 @@ interface IServerState {
   setupCSSLanguageService(): void;
 }
 
+// TODO: Implement LRU cache for parserCache and bytePrefixCache
 export default class ServerState implements IServerState {
   public static readonly STYLEX_CUSTOM_PROPERTY = "stylex-lsp-custom-property";
 
