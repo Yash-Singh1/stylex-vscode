@@ -46,12 +46,16 @@ function createWorkspaceClient(folder: WorkspaceFolder) {
     run: {
       module: serverModule,
       transport: TransportKind.ipc,
-      args: ["--experimental-specifier-resolution=node"],
+      options: {
+        execArgv: ["--experimental-specifier-resolution=node"],
+      },
     },
     debug: {
       module: serverModule,
       transport: TransportKind.ipc,
-      args: ["--experimental-specifier-resolution=node"],
+      options: {
+        execArgv: ["--experimental-specifier-resolution=node"],
+      },
     },
   };
 

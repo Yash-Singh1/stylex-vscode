@@ -84,7 +84,10 @@ function calculateTextStartOffset(textDocument: TextDocument) {
       }
     }
 
-    if (!line.trim() || line.trim().startsWith("//") || multilineComment) {
+    if (
+      (!line.trim() || line.trim().startsWith("//") || multilineComment) &&
+      currentLine < textDocument.lineCount
+    ) {
       startOffset += line.length + 1;
       line = textDocument
         .getText({
