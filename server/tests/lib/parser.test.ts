@@ -158,7 +158,7 @@ const HOMEPAGE = 'https://stylexjs.com';
     //
 `);
 
-assertOffsetCorrect(`//
+    assertOffsetCorrect(`//
 /*
 
 */
