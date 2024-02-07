@@ -55,7 +55,7 @@ function calculateTextStartOffset(textDocument: TextDocument) {
       start: { line: 0, character: 0 },
       end: { line: 1, character: 0 },
     })
-    .slice(0, -1);
+    .slice(0, textDocument.lineCount === 1 ? undefined : -1);
   let currentLine = 1;
   let multilineComment = false;
 

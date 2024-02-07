@@ -149,5 +149,21 @@ import Counter from './Counter';
 
 const HOMEPAGE = 'https://stylexjs.com';
 `);
+
+    assertOffsetCorrect("");
+
+    assertOffsetCorrect("/**/");
+
+    assertOffsetCorrect(`//
+    //
+`);
+
+assertOffsetCorrect(`//
+/*
+
+*/
+
+
+`);
   });
 });
