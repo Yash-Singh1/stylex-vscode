@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.11
+
+- Remove Intl.Segmenter polyfill
+- Attempt at fixing CPU spikes with empty files
+
 ## 0.0.10
 
 - Detect StyleX workspaces
