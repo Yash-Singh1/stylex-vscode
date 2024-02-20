@@ -12,4 +12,5 @@ export default defineConfig({
   minify: true,
   minifyIdentifiers: false,
   minifySyntax: true,
+  target: "es2022",
 });
