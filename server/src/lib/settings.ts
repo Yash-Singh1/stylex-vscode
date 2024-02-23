@@ -5,6 +5,7 @@ export interface UserConfiguration {
   hover: boolean;
   suggestions: boolean;
   colorDecorators: boolean;
+  inspectPort: number | null;
 }
 
 export const defaultSettings = {
@@ -14,4 +15,5 @@ export const defaultSettings = {
   suggestions: true,
   colorDecorators: true,
   useRemForFontSize: false,
+  inspectPort: null,
 } satisfies UserConfiguration;

@@ -24,6 +24,8 @@ let ctx: ExtensionContext = null;
 const CLIENT_ID = "stylex";
 const CLIENT_NAME = "StyleX Language Server";
 
+const DEFAULT_INSPECT_PORT = 7221;
+
 const TRIGGER_GLOB =
   "**/{package.json,package-lock.json,*.stylex.js,*.stylex.ts,*.stylex.tsx,*.stylex.jsx}";
 
@@ -40,6 +42,8 @@ function createWorkspaceClient(folder: WorkspaceFolder) {
     path.join("server", "out", "server.cjs"),
   );
 
+  const configuration = workspace.getConfiguration("stylex");
+
   // If the extension is launched in debug mode then the debug server options are used
   // Otherwise the run options are used
   const serverOptions: ServerOptions = {
@@ -47,14 +51,18 @@ function createWorkspaceClient(folder: WorkspaceFolder) {
       module: serverModule,
       transport: TransportKind.ipc,
       options: {
-        execArgv: ["--experimental-specifier-resolution=node"],
+        execArgv: configuration.get("inspectPort", null)
+          ? [`--inspect=${configuration.get("inspectPort", null)}`]
+          : [],
       },
     },
     debug: {
       module: serverModule,
       transport: TransportKind.ipc,
       options: {
-        execArgv: ["--experimental-specifier-resolution=node"],
+        execArgv: [
+          `--inspect=${configuration.get("inspectPort", DEFAULT_INSPECT_PORT) ?? DEFAULT_INSPECT_PORT}`,
+        ],
       },
     },
   };
@@ -66,9 +74,8 @@ function createWorkspaceClient(folder: WorkspaceFolder) {
     "typescriptreact",
   ];
 
-  const includedLanguages = (workspace
-    .getConfiguration("stylex")
-    .get("includedLanguages") || {}) as Record<string, string>;
+  const includedLanguages = (configuration.get("includedLanguages") ||
+    {}) as Record<string, string>;
 
   // Options to control the language client
   const clientOptions: LanguageClientOptions = {
@@ -88,7 +95,7 @@ function createWorkspaceClient(folder: WorkspaceFolder) {
       })),
     ],
     connectionOptions: {
-      maxRestartCount: 5,
+      maxRestartCount: 3,
     },
     workspaceFolder: folder,
   };
