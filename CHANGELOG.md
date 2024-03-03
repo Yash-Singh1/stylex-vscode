@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.12
+
+- Support older VSCode versions
+- Debugging configuration options
+- LRU Cache on parser and byte cache
+
 ## 0.0.11
 
 - Remove Intl.Segmenter polyfill

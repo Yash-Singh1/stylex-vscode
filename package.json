@@ -4,7 +4,7 @@
   "description": "Intellisense for StyleX inside Visual Studio Code",
   "author": "Yash Singh",
   "license": "MIT",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "icon": "assets/stylexlogo.png",
   "repository": {
     "type": "git",
@@ -115,7 +115,7 @@
     "@types/node": "^18.14.6",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
-    "@vscode/vsce": "^2.23.0",
+    "@vscode/vsce": "^2.24.0",
     "concurrently": "^8.2.2",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
