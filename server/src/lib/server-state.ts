@@ -6,6 +6,7 @@ import {
   getCSSLanguageService,
   type LanguageService as CSSLanguageService,
 } from "vscode-css-languageservice";
+import LRUCache from "./lru-cache";
 
 interface IServerState {
   setupCSSLanguageService(): void;
@@ -15,9 +16,9 @@ interface IServerState {
 export default class ServerState implements IServerState {
   public static readonly STYLEX_CUSTOM_PROPERTY = "stylex-lsp-custom-property";
 
-  public parserCache = new Map<string, Module>();
+  public parserCache = new LRUCache<string, Module>(20);
   public colorCache = new Map<string, ColorInformation[]>();
-  public bytePrefixCache = new Map<string, StringAsBytes>();
+  public bytePrefixCache = new LRUCache<string, StringAsBytes>(20);
   public virtualDocumentFactory = new CSSVirtualDocument();
   public cssLanguageService: CSSLanguageService | null = null;
 

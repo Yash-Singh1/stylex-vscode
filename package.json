@@ -74,7 +74,10 @@
           "description": "Enable/disable whether the editor should render color decorators for styles."
         },
         "stylex.inspectPort": {
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "default": null,
           "markdownDescription": "Port that will be used for Node.js debugger connections for the language server. Debugging is disabled by default."
         },
