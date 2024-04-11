@@ -65,6 +65,10 @@ async function onHover({
   // Resulting hover
   let hover: Hover | null = null;
 
+  const paramByte = byteRepresentation.charIndexToByteOffset(
+    textDocument.offsetAt(params.position),
+  );
+
   await walk<{
     parentClass: string[];
     callInside: string | null | undefined;
@@ -78,24 +82,13 @@ async function onHover({
       },
 
       "*"(node) {
-        if ("span" in node && node.type !== "VariableDeclaration") {
-          const startSpanRelative = textDocument.positionAt(
-            byteRepresentation.byteOffsetToCharIndex(
-              node.span.start - moduleStart,
-            ),
-          );
-          const endSpanRelative = textDocument.positionAt(
-            byteRepresentation.byteOffsetToCharIndex(
-              node.span.end - moduleStart,
-            ),
-          );
-
-          if (
-            params.position.line > endSpanRelative.line ||
-            params.position.line < startSpanRelative.line
-          ) {
-            return false;
-          }
+        if (
+          "span" in node &&
+          node.type !== "VariableDeclaration" &&
+          paramByte < node.span.start &&
+          paramByte > node.span.end
+        ) {
+          return false;
         }
       },
 
@@ -247,27 +240,10 @@ async function onHover({
             };
           }
 
-          const startSpanRelative = textDocument.positionAt(
-            byteRepresentation.byteOffsetToCharIndex(
-              node.key.span.start - moduleStart,
-            ),
-          );
-          const endSpanRelative = textDocument.positionAt(
-            byteRepresentation.byteOffsetToCharIndex(
-              node.key.span.end - moduleStart,
-            ),
-          );
-
           // Don't use out of range nodes
           if (
-            !(
-              params.position.line >= startSpanRelative.line &&
-              params.position.line <= endSpanRelative.line &&
-              (params.position.line !== startSpanRelative.line ||
-                params.position.character >= startSpanRelative.character) &&
-              (params.position.line !== endSpanRelative.line ||
-                params.position.character <= endSpanRelative.character)
-            )
+            paramByte > node.key.span.end - moduleStart ||
+            paramByte < node.key.span.start - moduleStart
           ) {
             return state;
           }

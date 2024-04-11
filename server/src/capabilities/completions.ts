@@ -58,6 +58,11 @@ async function onCompletion({
   const stateManager = new StateManager();
   let moduleStart = 0;
 
+  // Precalculate the byte offset of the parameter
+  const paramByte = byteRepresentation.charIndexToByteOffset(
+    textDocument.offsetAt(params.position),
+  );
+
   await walk<{
     propertyName: string | undefined;
     callInside: string | null | undefined;
@@ -80,24 +85,13 @@ async function onCompletion({
       },
 
       "*"(node) {
-        if ("span" in node && node.type !== "VariableDeclaration") {
-          const startSpanRelative = textDocument.positionAt(
-            byteRepresentation.byteOffsetToCharIndex(
-              node.span.start - moduleStart,
-            ),
-          );
-          const endSpanRelative = textDocument.positionAt(
-            byteRepresentation.byteOffsetToCharIndex(
-              node.span.end - moduleStart,
-            ),
-          );
-
-          if (
-            params.position.line > endSpanRelative.line ||
-            params.position.line < startSpanRelative.line
-          ) {
-            return false;
-          }
+        if (
+          "span" in node &&
+          node.type !== "VariableDeclaration" &&
+          paramByte < node.span.start - moduleStart &&
+          paramByte > node.span.end - moduleStart
+        ) {
+          return false;
         }
       },
 
@@ -199,19 +193,10 @@ async function onCompletion({
               node.span.start - moduleStart,
             ),
           );
-          const endSpanRelative = textDocument.positionAt(
-            byteRepresentation.byteOffsetToCharIndex(
-              node.span.end - moduleStart,
-            ),
-          );
 
           if (
-            params.position.line > endSpanRelative.line ||
-            params.position.line < startSpanRelative.line ||
-            (params.position.line === endSpanRelative.line &&
-              params.position.character > endSpanRelative.character) ||
-            (params.position.line === startSpanRelative.line &&
-              params.position.character < startSpanRelative.character)
+            paramByte < node.span.start - moduleStart ||
+            paramByte > node.span.end - moduleStart
           ) {
             return false;
           }

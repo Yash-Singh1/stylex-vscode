@@ -25,6 +25,7 @@ export class StringAsBytes {
   private prefixArray: Uint32Array;
   private stringSegments: string[];
   private preStringLength: Uint32Array;
+  private stringVal: string;
 
   constructor(string: string) {
     this.encoder = new TextEncoder();
@@ -34,6 +35,7 @@ export class StringAsBytes {
     this.stringSegments = [
       ...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(string),
     ].map((segment) => segment.segment);
+    this.stringVal = string;
 
     this.calculatePrefixArray();
   }
@@ -72,6 +74,11 @@ export class StringAsBytes {
     this.prefixArray = prefixArray;
     this.preStringLength = preStringLength;
     this.stringLength = prefixArray[prefixArray.length - 1];
+  }
+
+  // We can make this O(n) time because it is called only once per request
+  public charIndexToByteOffset(charIndex: number) {
+    return this.encoder.encode(this.stringVal.slice(0, charIndex)).length;
   }
 
   /**
