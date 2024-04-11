@@ -381,6 +381,8 @@ async function onHover({
                     stylexConfig,
                   )};`,
                 );
+              } else {
+                return States.EXIT;
               }
             } else if ("id" in staticValue) {
               cssLines.push(
@@ -390,7 +392,11 @@ async function onHover({
                     : `var(--${staticValue.id})`
                 };`,
               );
+            } else {
+              return States.EXIT;
             }
+          } else {
+            return States.EXIT;
           }
 
           cssLines.push(`${indentation.slice(2)}}`);
