@@ -85,8 +85,8 @@ async function onHover({
         if (
           "span" in node &&
           node.type !== "VariableDeclaration" &&
-          paramByte < node.span.start &&
-          paramByte > node.span.end
+          paramByte < node.span.start - moduleStart &&
+          paramByte > node.span.end - moduleStart
         ) {
           return false;
         }
