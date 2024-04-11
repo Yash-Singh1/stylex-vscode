@@ -4,7 +4,7 @@
   "description": "Intellisense for StyleX inside Visual Studio Code",
   "author": "Yash Singh",
   "license": "MIT",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "icon": "assets/stylexlogo.png",
   "repository": {
     "type": "git",

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.13
+
+- Update to `@stylex/*` 0.5
+- Use bytes for comparison in backtracking
+- Don't display hover for empty declarations
+
 ## 0.0.12
 
 - Support older VSCode versions

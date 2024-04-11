@@ -22,3 +22,9 @@ This is the basic structure of the extension. The language client is the actual 
 ## Running Locally
 
 See [LOCAL.md](./LOCAL.md) for instructions on starting up a development environment.
+
+## Publishing
+
+```sh
+vsce package --baseImagesUrl https://stylexvscode.pages.dev/
+```
