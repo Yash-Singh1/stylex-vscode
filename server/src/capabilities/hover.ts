@@ -155,24 +155,17 @@ async function onHover({
                   }
                 : null;
 
+          state.callInside = verifiedImport;
+          state.callerIdentifier =
+            callerID?.type === "Identifier" ? callerID.value : null;
           if (verifiedImport === "create" || verifiedImport === "keyframes") {
-            return {
-              ...state,
-              callInside: verifiedImport,
-              callerIdentifier:
-                callerID?.type === "Identifier" ? callerID.value : null,
-            };
+            return state;
           } else if (
             verifiedImport === "createTheme" ||
             verifiedImport === "defineVars"
           ) {
             return {
-              state: {
-                ...state,
-                callInside: verifiedImport,
-                callerIdentifier:
-                  callerID?.type === "Identifier" ? callerID.value : null,
-              },
+              state,
               ignore: [
                 verifiedImport === "createTheme" ? "arguments.0" : "",
                 "callee",
@@ -181,10 +174,9 @@ async function onHover({
           }
         }
 
-        return {
-          ...state,
-          callInside: null,
-        };
+        state.callInside = null;
+        state.callerIdentifier = null;
+        return state;
       },
 
       WithStatement() {
@@ -216,7 +208,8 @@ async function onHover({
             node.value.type === "ObjectExpression" ||
             node.value.type === "ArrowFunctionExpression"
           ) {
-            return { ...state, parentClass: [...state.parentClass, key] };
+            state.parentClass.push(key);
+            return state;
           }
 
           if (
@@ -232,12 +225,10 @@ async function onHover({
                 ) &&
                 node.value.callee.property.value === "keyframes"))
           ) {
-            return {
-              ...state,
-              parentClass: [],
-              callInside: "keyframes",
-              callerIdentifier: "1" + key,
-            };
+            state.parentClass = [];
+            state.callInside = "keyframes";
+            state.callerIdentifier = "1" + key;
+            return state;
           }
 
           // Don't use out of range nodes

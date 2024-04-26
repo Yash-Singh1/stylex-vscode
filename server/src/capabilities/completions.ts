@@ -123,21 +123,17 @@ async function onCompletion({
             verifiedImport)
         ) {
           if (verifiedImport === "create" || verifiedImport === "keyframes") {
-            return {
-              ...state,
-              callInside: verifiedImport,
-              propertyDeep: 1,
-            };
+            state.callInside = verifiedImport;
+            state.propertyDeep = 1;
+            return state;
           } else if (
             verifiedImport === "createTheme" ||
             verifiedImport === "defineVars"
           ) {
+            state.callInside = verifiedImport;
+            state.propertyDeep = 1;
             return {
-              state: {
-                ...state,
-                callInside: verifiedImport,
-                propertyDeep: 1,
-              },
+              state,
               ignore: [
                 verifiedImport === "createTheme" ? "arguments.0" : "",
                 "callee",
@@ -148,10 +144,8 @@ async function onCompletion({
           }
         }
 
-        return {
-          ...state,
-          callInside: null,
-        };
+        state.callInside = null;
+        return state;
       },
 
       KeyValueProperty(node, state) {
@@ -161,11 +155,8 @@ async function onCompletion({
               state.callInside === "keyframes") &&
             state.propertyDeep === 2
           ) {
-            return {
-              ...state,
-              propertyName: calculateKeyValue(node, stateManager),
-              propertyDeep: 3,
-            };
+            state.propertyName = calculateKeyValue(node, stateManager);
+            state.propertyDeep = 3;
           } else if (
             state.callInside === "createTheme" ||
             state.callInside === "defineVars"
@@ -173,15 +164,10 @@ async function onCompletion({
             if (node.value.type === "ObjectExpression") {
               state.propertyDeep += 1;
             }
-            return {
-              ...state,
-              propertyName: ServerState.STYLEX_CUSTOM_PROPERTY,
-            };
+            state.propertyName = ServerState.STYLEX_CUSTOM_PROPERTY;
           } else {
-            return {
-              ...state,
-              propertyDeep: state.propertyDeep + 1,
-            };
+            state.propertyDeep += 1;
+            return state;
           }
         }
       },
