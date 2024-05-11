@@ -20,6 +20,7 @@ import {
 } from "../lib/color-logic";
 import { evaluate } from "../lib/evaluate";
 import { inspect } from "node:util";
+import { isStyleXPropertyType } from "../lib/stylex-utils";
 
 type ColorParams = Parameters<Parameters<Connection["onDocumentColor"]>[0]>;
 
@@ -212,6 +213,22 @@ async function onDocumentColor({
             node.value.type === "ArrayExpression" ||
             node.value.type === "TemplateLiteral")
         ) {
+          if (
+            node.value.type === "CallExpression" &&
+            node.value.callee.type === "MemberExpression" &&
+            isStyleXPropertyType(node.value.callee, stateManager)
+          ) {
+            if (node.value.callee.property.value === "color") {
+              if (node.value.arguments.length > 0) {
+                node.value = node.value.arguments[0].expression;
+              } else {
+                return;
+              }
+            } else {
+              return false;
+            }
+          }
+
           const resultingValue = evaluate(node.value, stateManager);
 
           if (resultingValue.static && "value" in resultingValue) {

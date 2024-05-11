@@ -12,6 +12,11 @@ export const vars = stylex.defineVars({
     "0%": { opacity: 0 },
     "100%": { opacity: 1 },
   }),
+  vari: stylex3.types.color<string>({
+    default: 'cyan',
+    [DARK]: 'navy',
+  }),
+  vari2: stylex3.types.color<string>("red")
 });
 
 // Dracula theme
