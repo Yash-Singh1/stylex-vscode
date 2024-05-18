@@ -435,12 +435,17 @@ export async function _walk<StateType>(
           let result;
 
           if ("type" in child) {
-            result = await _walk<StateType>(child, visitor, { ...state }, node);
+            result = await _walk<StateType>(
+              child,
+              visitor,
+              JSON.parse(JSON.stringify(state)),
+              node,
+            );
           } else if ("expression" in child) {
             result = await _walk<StateType>(
               child.expression,
               visitor,
-              { ...state },
+              JSON.parse(JSON.stringify(state)),
               node,
             );
           }
@@ -456,7 +461,7 @@ export async function _walk<StateType>(
         const result = await _walk<StateType>(
           node[key as keyof typeof node] as unknown as NodeType,
           visitor,
-          { ...state },
+          JSON.parse(JSON.stringify(state)),
           node,
         );
         if (result === States.EXIT) {

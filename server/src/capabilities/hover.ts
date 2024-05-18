@@ -182,7 +182,7 @@ async function onHover({
           isStyleXPropertyType(node.callee, stateManager)
         ) {
           state.propertyType = dashify(node.callee.property.value);
-          return;
+          return state;
         }
 
         state.callInside = null;
@@ -306,19 +306,19 @@ async function onHover({
 
           let cssLines: string[] = [];
 
+          classLine.reverse();
           const propertyName =
             (state.callInside === "create" || state.callInside === "keyframes"
-              ? classLine
-                  .reverse()
-                  .find(
-                    (className) =>
-                      !(
-                        className.startsWith(":") ||
-                        className.startsWith("@") ||
-                        className === "default"
-                      ),
-                  )
+              ? classLine.find(
+                  (className) =>
+                    !(
+                      className.startsWith(":") ||
+                      className.startsWith("@") ||
+                      className === "default"
+                    ),
+                )
               : `--${state.parentClass[0] || key}`) || "unknown";
+          classLine.reverse();
           const dashifyPropertyKey = dashify(propertyName);
 
           if (propertyType) {
@@ -341,8 +341,7 @@ async function onHover({
                   .slice(0)
                   .filter(
                     (className, index) =>
-                      index === 0 ||
-                      (className !== "default" && className.startsWith(":")),
+                      index === 0 || className.startsWith(":"),
                   )
                   .sort()
                   .reverse()
