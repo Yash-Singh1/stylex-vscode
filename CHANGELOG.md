@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.14
+
+- Support for `@stylex/*` 0.6
+- Minor performance improvements
+- FIxed previous problems in nested at-rules
+
 ## 0.0.13
 
 - Update to `@stylex/*` 0.5
