@@ -11,7 +11,11 @@ import { evaluate } from "../lib/evaluate";
 import { handleImports, handleRequires } from "../lib/imports-handler";
 import * as prettier from "prettier";
 import stylexBabelPlugin from "@stylexjs/babel-plugin";
-import { dashify, transformValue } from "../lib/stylex-utils";
+import {
+  dashify,
+  isStyleXPropertyType,
+  transformValue,
+} from "../lib/stylex-utils";
 
 type HoverParams = Parameters<Parameters<Connection["onHover"]>[0]>;
 
@@ -73,6 +77,7 @@ async function onHover({
     parentClass: string[];
     callInside: string | null | undefined;
     callerIdentifier: string | null | undefined;
+    propertyType: string | null;
   }>(
     parseResult,
     {
@@ -172,6 +177,12 @@ async function onHover({
               ],
             };
           }
+        } else if (
+          node.callee.type === "MemberExpression" &&
+          isStyleXPropertyType(node.callee, stateManager)
+        ) {
+          state.propertyType = dashify(node.callee.property.value);
+          return;
         }
 
         state.callInside = null;
@@ -203,6 +214,33 @@ async function onHover({
           }
 
           if (!key) return;
+
+          let nodeValue = node.value;
+          let propertyType = state.propertyType;
+
+          if (
+            node.value.type === "CallExpression" &&
+            node.value.callee.type === "MemberExpression" &&
+            isStyleXPropertyType(node.value.callee, stateManager)
+          ) {
+            if (node.value.arguments.length > 0) {
+              const newNodeValue = node.value.arguments[0].expression;
+              propertyType = dashify(node.value.callee.property.value);
+              if (
+                newNodeValue.type === "StringLiteral" ||
+                newNodeValue.type === "TemplateLiteral" ||
+                newNodeValue.type === "CallExpression" ||
+                newNodeValue.type === "ArrayExpression"
+              ) {
+                nodeValue = newNodeValue;
+              } else {
+                state.parentClass.push(key);
+                return state;
+              }
+            } else {
+              return false;
+            }
+          }
 
           if (
             node.value.type === "ObjectExpression" ||
@@ -268,6 +306,28 @@ async function onHover({
 
           let cssLines: string[] = [];
 
+          const propertyName =
+            (state.callInside === "create" || state.callInside === "keyframes"
+              ? classLine
+                  .reverse()
+                  .find(
+                    (className) =>
+                      !(
+                        className.startsWith(":") ||
+                        className.startsWith("@") ||
+                        className === "default"
+                      ),
+                  )
+              : `--${state.parentClass[0] || key}`) || "unknown";
+          const dashifyPropertyKey = dashify(propertyName);
+
+          if (propertyType) {
+            cssLines.push(`@property ${dashifyPropertyKey} {`);
+            cssLines.push(`  syntax: "<${propertyType}>";`);
+            cssLines.push("}");
+            cssLines.push("");
+          }
+
           let indentSize = 0;
 
           for (const atInclude of atIncluded) {
@@ -289,24 +349,9 @@ async function onHover({
                   .join("") || "unknown")
               : classLine[0];
 
-          const propertyName =
-            (state.callInside === "create" || state.callInside === "keyframes"
-              ? classLine
-                  .reverse()
-                  .find(
-                    (className) =>
-                      !(
-                        className.startsWith(":") ||
-                        className.startsWith("@") ||
-                        className === "default"
-                      ),
-                  )
-              : `--${state.parentClass[0] || key}`) || "unknown";
-
           cssLines.push(`${indentation.slice(2)}${parentSelector} {`);
 
-          const staticValue = evaluate(node.value, stateManager);
-          const dashifyPropertyKey = dashify(propertyName);
+          const staticValue = evaluate(nodeValue, stateManager);
 
           const stylexConfig = {
             dev: true,
@@ -439,7 +484,12 @@ async function onHover({
       },
     },
     token,
-    { parentClass: [], callInside: null, callerIdentifier: undefined },
+    {
+      parentClass: [],
+      callInside: null,
+      callerIdentifier: undefined,
+      propertyType: null,
+    },
   );
 
   return hover;

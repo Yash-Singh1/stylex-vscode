@@ -13,8 +13,8 @@ export const vars = stylex.defineVars({
     "100%": { opacity: 1 },
   }),
   vari: stylex3.types.color<string>({
-    default: 'cyan',
-    [DARK]: 'navy',
+    default: "cyan",
+    [DARK]: "navy",
   }),
   vari2: stylex3.types.color<string>("red"),
   vari3: stylex3.types.angle<string>("45rad"),
