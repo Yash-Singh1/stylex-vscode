@@ -277,22 +277,23 @@ async function onHover({
             return state;
           }
 
-          const classLine = [
-            ...(state.callInside === "create" ||
-            state.callInside === "keyframes"
-              ? []
-              : [
-                  state.callerIdentifier
-                    ? `.${state.callerIdentifier}`
-                    : ":root",
-                ]),
-            ...(<string[]>state.parentClass).slice(
+          const classLine = [];
+          if (
+            state.callInside !== "create" &&
+            state.callInside !== "keyframes"
+          ) {
+            classLine.push(
+              state.callerIdentifier ? `.${state.callerIdentifier}` : ":root",
+            );
+          }
+          classLine.push(
+            ...state.parentClass.slice(
               state.callInside === "create" || state.callInside === "keyframes"
                 ? 0
                 : 1,
             ),
             key,
-          ];
+          );
 
           const atIncluded = classLine.filter((className) =>
             className.startsWith("@"),
