@@ -3,6 +3,7 @@ import type { ColorInformation } from "vscode-languageserver";
 import type { StringAsBytes } from "./string-bytes";
 import { CSSVirtualDocument } from "./virtual-document";
 import {
+  IPropertyData,
   getCSSLanguageService,
   type LanguageService as CSSLanguageService,
 } from "vscode-css-languageservice";
@@ -12,7 +13,6 @@ interface IServerState {
   setupCSSLanguageService(): void;
 }
 
-// TODO: Implement LRU cache for parserCache and bytePrefixCache
 export default class ServerState implements IServerState {
   public static readonly STYLEX_CUSTOM_PROPERTY = "stylex-lsp-custom-property";
 
@@ -49,6 +49,50 @@ export default class ServerState implements IServerState {
           return [];
         },
         provideProperties() {
+          type Restriction =
+            | "enum"
+            | "time"
+            | "timing-function"
+            | "box"
+            | "color"
+            | "repeat"
+            | "url"
+            | "line-style"
+            | "image"
+            | "length"
+            | "identifier"
+            | "number(0-1)"
+            | "number"
+            | "font"
+            | "string"
+            | "angle"
+            | "integer"
+            | "property"
+            | "percentage"
+            | "unicode-range"
+            | "line-width"
+            | "geometry-box"
+            | "position"
+            | "positon"
+            | "shape"
+            | "frequency"
+            | "resolution";
+
+          const typeToRestriction: {
+            [K in keyof typeof import("@stylexjs/stylex").types]?: Restriction[];
+          } = {
+            angle: ["angle"],
+            image: ["image", "url"],
+            length: ["length", "number"],
+            number: ["number"],
+            integer: ["number"],
+            lengthPercentage: ["percentage", "length"],
+            percentage: ["percentage"],
+            resolution: ["resolution"],
+            time: ["time"],
+            url: ["url"],
+          };
+
           return [
             {
               name: ServerState.STYLEX_CUSTOM_PROPERTY,
@@ -80,6 +124,12 @@ export default class ServerState implements IServerState {
                 "shape",
               ],
             },
+            ...Object.entries(typeToRestriction).map(
+              ([type, restrictions]) => ({
+                name: `${ServerState.STYLEX_CUSTOM_PROPERTY}-${type}`,
+                restrictions,
+              }),
+            ),
           ];
         },
       },

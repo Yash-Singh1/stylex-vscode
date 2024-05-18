@@ -8,9 +8,27 @@ import { calculateKeyValue, calculateStartOffset, parse } from "../lib/parser";
 import StateManager from "../lib/state-manager";
 import { handleImports, handleRequires } from "../lib/imports-handler";
 import { States, walk } from "../lib/walk";
-import { dashify } from "../lib/stylex-utils";
+import { dashify, isStyleXPropertyType } from "../lib/stylex-utils";
 
 type CompletionParams = Parameters<Parameters<Connection["onCompletion"]>[0]>;
+
+const restrictionToProperty: {
+  [K in keyof typeof import("@stylexjs/stylex").types]?: string;
+} = {
+  angle: `${ServerState.STYLEX_CUSTOM_PROPERTY}-angle`,
+  color: "color",
+  image: `${ServerState.STYLEX_CUSTOM_PROPERTY}-image`,
+  length: `${ServerState.STYLEX_CUSTOM_PROPERTY}-length`,
+  number: `${ServerState.STYLEX_CUSTOM_PROPERTY}-number`,
+  integer: `${ServerState.STYLEX_CUSTOM_PROPERTY}-integer`,
+  lengthPercentage: `${ServerState.STYLEX_CUSTOM_PROPERTY}-lengthPercentage`,
+  percentage: `${ServerState.STYLEX_CUSTOM_PROPERTY}-percentage`,
+  resolution: `${ServerState.STYLEX_CUSTOM_PROPERTY}-resolution`,
+  time: `${ServerState.STYLEX_CUSTOM_PROPERTY}-time`,
+  transformFunction: "transform",
+  transformList: "transform",
+  url: `${ServerState.STYLEX_CUSTOM_PROPERTY}-url`,
+};
 
 async function onCompletion({
   params,
@@ -142,6 +160,22 @@ async function onCompletion({
           } else if (verifiedImport === "firstThatWorks") {
             return;
           }
+        } else if (
+          node.callee.type === "MemberExpression" &&
+          isStyleXPropertyType(node.callee, stateManager)
+        ) {
+          state.propertyName =
+            restrictionToProperty[
+              node.callee.property
+                .value as keyof typeof import("@stylexjs/stylex").types
+            ];
+          if (
+            node.arguments.length > 0 &&
+            node.arguments[0].expression.type === "ObjectExpression"
+          ) {
+            state.propertyDeep += 1;
+          }
+          return state;
         }
 
         state.callInside = null;
@@ -164,11 +198,11 @@ async function onCompletion({
             if (node.value.type === "ObjectExpression") {
               state.propertyDeep += 1;
             }
-            state.propertyName = ServerState.STYLEX_CUSTOM_PROPERTY;
+            state.propertyName ??= ServerState.STYLEX_CUSTOM_PROPERTY;
           } else {
             state.propertyDeep += 1;
-            return state;
           }
+          return state;
         }
       },
 
@@ -241,7 +275,11 @@ async function onCompletion({
       },
     },
     token,
-    { propertyName: undefined, propertyDeep: 0, callInside: undefined },
+    {
+      propertyName: undefined,
+      propertyDeep: 0,
+      callInside: undefined,
+    },
   );
 
   return { items: completions, isIncomplete: true };

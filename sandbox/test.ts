@@ -16,7 +16,8 @@ export const vars = stylex.defineVars({
     default: 'cyan',
     [DARK]: 'navy',
   }),
-  vari2: stylex3.types.color<string>("red")
+  vari2: stylex3.types.color<string>("red"),
+  vari3: stylex3.types.angle<string>("45rad"),
 });
 
 // Dracula theme

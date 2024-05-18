@@ -213,6 +213,8 @@ async function onDocumentColor({
             node.value.type === "ArrayExpression" ||
             node.value.type === "TemplateLiteral")
         ) {
+          let nodeValue = node.value;
+
           if (
             node.value.type === "CallExpression" &&
             node.value.callee.type === "MemberExpression" &&
@@ -220,7 +222,15 @@ async function onDocumentColor({
           ) {
             if (node.value.callee.property.value === "color") {
               if (node.value.arguments.length > 0) {
-                node.value = node.value.arguments[0].expression;
+                const newNodeValue = node.value.arguments[0].expression;
+                if (
+                  newNodeValue.type === "StringLiteral" ||
+                  newNodeValue.type === "TemplateLiteral" ||
+                  newNodeValue.type === "CallExpression" ||
+                  newNodeValue.type === "ArrayExpression"
+                ) {
+                  nodeValue = newNodeValue;
+                }
               } else {
                 return;
               }
@@ -229,7 +239,7 @@ async function onDocumentColor({
             }
           }
 
-          const resultingValue = evaluate(node.value, stateManager);
+          const resultingValue = evaluate(nodeValue, stateManager);
 
           if (resultingValue.static && "value" in resultingValue) {
             if (typeof resultingValue.value === "string") {
