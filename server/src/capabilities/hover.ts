@@ -226,25 +226,15 @@ async function onHover({
             if (node.value.arguments.length > 0) {
               const newNodeValue = node.value.arguments[0].expression;
               propertyType = dashify(node.value.callee.property.value);
-              if (
-                newNodeValue.type === "StringLiteral" ||
-                newNodeValue.type === "TemplateLiteral" ||
-                newNodeValue.type === "CallExpression" ||
-                newNodeValue.type === "ArrayExpression"
-              ) {
-                nodeValue = newNodeValue;
-              } else {
-                state.parentClass.push(key);
-                return state;
-              }
+              nodeValue = newNodeValue;
             } else {
               return false;
             }
           }
 
           if (
-            node.value.type === "ObjectExpression" ||
-            node.value.type === "ArrowFunctionExpression"
+            nodeValue.type === "ObjectExpression" ||
+            nodeValue.type === "ArrowFunctionExpression"
           ) {
             state.parentClass.push(key);
             return state;
