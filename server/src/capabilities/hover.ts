@@ -19,6 +19,10 @@ import {
 
 type HoverParams = Parameters<Parameters<Connection["onHover"]>[0]>;
 
+const precedeDoubleDash = (value: string) => {
+  return value.startsWith("--") ? value : `--${value}`;
+};
+
 async function onHover({
   params,
   token,
@@ -308,7 +312,7 @@ async function onHover({
                       className === "default"
                     ),
                 )
-              : `--${state.parentClass[0] || key}`) || "unknown";
+              : precedeDoubleDash(state.parentClass[0] || key)) || "unknown";
           classLine.reverse();
           const dashifyPropertyKey = dashify(propertyName);
 

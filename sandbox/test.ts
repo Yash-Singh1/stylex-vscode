@@ -18,6 +18,7 @@ export const vars = stylex.defineVars({
   }),
   vari2: stylex3.types.color<string>("red"),
   vari3: stylex3.types.angle<string>("45rad"),
+  "--purple": "#f0f",
 });
 
 // Dracula theme
