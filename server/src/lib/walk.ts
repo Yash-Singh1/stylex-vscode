@@ -339,7 +339,9 @@ const visitorKeyMap: {
 function getVisitorKeys(node: NodeType) {
   const resultingKeys = visitorKeyMap[node.type];
   if (!resultingKeys) {
-    throw new Error(`No visitor keys found for node type ${node.type}`);
+    // We don't want to throw here or else the server will crash
+    return [];
+    // throw new Error(`No visitor keys found for node type ${node.type}`);
   }
   return resultingKeys;
 }
