@@ -174,3 +174,21 @@ export const animations = stylex.defineVars({
   fadeIn,
   fadeOut,
 });
+
+// Test defineConsts with color values for color decorators
+export const colorConstants = stylex.defineConsts({
+  primaryColor: "#ff6b6b",
+  secondaryColor: "rgb(74, 144, 226)",
+  accentColor: "hsl(120, 100%, 50%)",
+  transparentColor: "rgba(255, 0, 0, 0.5)",
+  namedColor: "blue",
+});
+
+// Test defineConsts with non-color values
+export const layoutConstants = stylex.defineConsts({
+  maxWidth: "1200px",
+  borderRadius: "8px",
+  spacing: "16px",
+  zIndex: 1000,
+  duration: "300ms",
+});
