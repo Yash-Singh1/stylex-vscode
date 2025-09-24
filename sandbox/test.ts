@@ -1,6 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import stylex2 from "@stylexjs/stylex";
-import { createTheme as createThemee } from "@stylexjs/stylex";
+import stylex2, { createTheme as createThemee } from "@stylexjs/stylex";
 import { colors, spacing } from "./tokens.stylex";
 const stylex3 = require("@stylexjs/stylex");
 
