@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.15
+
+- Add support for `defineConsts` API with full IntelliSense features
+- Color decorators now work with `defineConsts` color values
+- Autocompletion support for `defineConsts` constants
+- Hover information for `defineConsts` constants
+- Same functionality as `defineVars` but for the new `defineConsts` API
+
 ## 0.0.14
 
 - Support for `@stylex/*` 0.6

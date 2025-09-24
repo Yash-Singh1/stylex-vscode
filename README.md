@@ -18,13 +18,13 @@ See the generated CSS for a CSS property by hovering over it.
 
 ### Color Decorators
 
-Change values of colors using a color picker.
+Change values of colors using a color picker. Works with both `defineVars` and `defineConsts`.
 
 ![Color Picker](./assets/color-picker.png)
 
 ### Auto Complete
 
-Autocomplete styles
+Autocomplete styles and constants from `defineVars` and `defineConsts`.
 
 ![Autocomplete](./assets/autocomplete.png)
 
