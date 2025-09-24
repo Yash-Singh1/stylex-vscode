@@ -147,7 +147,13 @@ async function onHover({
             node.callee.property.type === "Identifier" &&
             (verifiedImport = node.callee.property.value)) ||
           (node.callee.type === "Identifier" &&
-            ["create", "createTheme", "defineVars", "keyframes"].includes(
+            [
+              "create",
+              "createTheme",
+              "defineVars",
+              "defineConsts",
+              "keyframes",
+            ].includes(
               (verifiedImport = stateManager.verifyNamedImport(
                 node.callee.value,
               )) || "",
@@ -171,7 +177,8 @@ async function onHover({
             return state;
           } else if (
             verifiedImport === "createTheme" ||
-            verifiedImport === "defineVars"
+            verifiedImport === "defineVars" ||
+            verifiedImport === "defineConsts"
           ) {
             return {
               state,

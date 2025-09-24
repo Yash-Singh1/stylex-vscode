@@ -184,11 +184,18 @@ async function onDocumentColor({
             (node.callee.property.value === "create" ||
               node.callee.property.value === "createTheme" ||
               node.callee.property.value === "defineVars" ||
+              node.callee.property.value === "defineConsts" ||
               node.callee.property.value === "keyframes") &&
             node.callee.object.type === "Identifier" &&
             stateManager.verifyStylexIdentifier(node.callee.object.value)) ||
           (node.callee.type === "Identifier" &&
-            ["create", "createTheme", "defineVars", "keyframes"].includes(
+            [
+              "create",
+              "createTheme",
+              "defineVars",
+              "defineConsts",
+              "keyframes",
+            ].includes(
               (verifiedImport = stateManager.verifyNamedImport(
                 node.callee.value,
               )) || "",

@@ -131,6 +131,7 @@ async function onCompletion({
               "create",
               "createTheme",
               "defineVars",
+              "defineConsts",
               "keyframes",
               "firstThatWorks",
             ].includes(
@@ -146,7 +147,8 @@ async function onCompletion({
             return state;
           } else if (
             verifiedImport === "createTheme" ||
-            verifiedImport === "defineVars"
+            verifiedImport === "defineVars" ||
+            verifiedImport === "defineConsts"
           ) {
             state.callInside = verifiedImport;
             state.propertyDeep = 1;
@@ -193,7 +195,8 @@ async function onCompletion({
             state.propertyDeep = 3;
           } else if (
             state.callInside === "createTheme" ||
-            state.callInside === "defineVars"
+            state.callInside === "defineVars" ||
+            state.callInside === "defineConsts"
           ) {
             if (node.value.type === "ObjectExpression") {
               state.propertyDeep += 1;
