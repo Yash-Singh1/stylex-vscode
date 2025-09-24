@@ -1,9 +1,9 @@
 import {
   createConnection,
-  TextDocuments,
-  ProposedFeatures,
-  InitializeParams,
   DidChangeConfigurationNotification,
+  InitializeParams,
+  ProposedFeatures,
+  TextDocuments,
   TextDocumentSyncKind,
   type InitializeResult,
 } from "vscode-languageserver/node";

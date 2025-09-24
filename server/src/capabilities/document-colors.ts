@@ -1,26 +1,26 @@
-import type { Connection } from "../server";
-import ServerState from "../lib/server-state";
-import { StringAsBytes } from "../lib/string-bytes";
-import { TextDocument } from "vscode-languageserver-textdocument";
-import type { UserConfiguration } from "../lib/settings";
-import { calculateStartOffset, parse } from "../lib/parser";
-import StateManager from "../lib/state-manager";
-import { handleImports, handleRequires } from "../lib/imports-handler";
-import { walk } from "../lib/walk";
-import type { ColorInformation } from "vscode-languageserver";
 import type {
   Identifier,
   StringLiteral,
   TsLiteralType,
   TsUnionType,
 } from "@swc/types";
+import { inspect } from "node:util";
+import type { ColorInformation } from "vscode-languageserver";
+import { TextDocument } from "vscode-languageserver-textdocument";
 import {
   culoriColorToVscodeColor,
   getColorFromValue,
 } from "../lib/color-logic";
 import { evaluate } from "../lib/evaluate";
-import { inspect } from "node:util";
+import { handleImports, handleRequires } from "../lib/imports-handler";
+import { calculateStartOffset, parse } from "../lib/parser";
+import ServerState from "../lib/server-state";
+import type { UserConfiguration } from "../lib/settings";
+import StateManager from "../lib/state-manager";
+import { StringAsBytes } from "../lib/string-bytes";
 import { isStyleXPropertyType } from "../lib/stylex-utils";
+import { walk } from "../lib/walk";
+import type { Connection } from "../server";
 
 type ColorParams = Parameters<Parameters<Connection["onDocumentColor"]>[0]>;
 

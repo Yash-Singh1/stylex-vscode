@@ -1,21 +1,21 @@
-import type { TextDocument } from "vscode-languageserver-textdocument";
-import type ServerState from "../lib/server-state";
-import { StringAsBytes } from "../lib/string-bytes";
-import { Connection } from "../server";
-import { UserConfiguration } from "../lib/settings";
-import { calculateStartOffset, parse } from "../lib/parser";
-import StateManager from "../lib/state-manager";
+import stylexBabelPlugin from "@stylexjs/babel-plugin";
+import * as prettier from "prettier";
 import { MarkupKind, type Hover } from "vscode-languageserver";
-import { States, walk } from "../lib/walk";
+import type { TextDocument } from "vscode-languageserver-textdocument";
 import { evaluate } from "../lib/evaluate";
 import { handleImports, handleRequires } from "../lib/imports-handler";
-import * as prettier from "prettier";
-import stylexBabelPlugin from "@stylexjs/babel-plugin";
+import { calculateStartOffset, parse } from "../lib/parser";
+import type ServerState from "../lib/server-state";
+import { UserConfiguration } from "../lib/settings";
+import StateManager from "../lib/state-manager";
+import { StringAsBytes } from "../lib/string-bytes";
 import {
   dashify,
   isStyleXPropertyType,
   transformValue,
 } from "../lib/stylex-utils";
+import { States, walk } from "../lib/walk";
+import { Connection } from "../server";
 
 type HoverParams = Parameters<Parameters<Connection["onHover"]>[0]>;
 

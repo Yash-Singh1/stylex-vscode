@@ -1,14 +1,14 @@
 import type { CompletionItem, CompletionList } from "vscode-languageserver";
-import type { Connection } from "../server";
-import ServerState from "../lib/server-state";
-import { StringAsBytes } from "../lib/string-bytes";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import type { UserConfiguration } from "../lib/settings";
-import { calculateKeyValue, calculateStartOffset, parse } from "../lib/parser";
-import StateManager from "../lib/state-manager";
 import { handleImports, handleRequires } from "../lib/imports-handler";
-import { States, walk } from "../lib/walk";
+import { calculateKeyValue, calculateStartOffset, parse } from "../lib/parser";
+import ServerState from "../lib/server-state";
+import type { UserConfiguration } from "../lib/settings";
+import StateManager from "../lib/state-manager";
+import { StringAsBytes } from "../lib/string-bytes";
 import { dashify, isStyleXPropertyType } from "../lib/stylex-utils";
+import { States, walk } from "../lib/walk";
+import type { Connection } from "../server";
 
 type CompletionParams = Parameters<Parameters<Connection["onCompletion"]>[0]>;
 
