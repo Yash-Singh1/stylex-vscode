@@ -39,7 +39,7 @@ async function onHover({
   languageId: string;
   serverState: ServerState;
   settings: UserConfiguration;
-  parserInit: typeof import("@swc/wasm-web/wasm-web.js");
+  parserInit: any;
   byteRepresentation: StringAsBytes;
 }) {
   const text = textDocument.getText();

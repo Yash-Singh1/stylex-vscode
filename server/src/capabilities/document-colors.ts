@@ -40,7 +40,7 @@ async function onDocumentColor({
   textDocument: TextDocument;
   settings: UserConfiguration;
   languageId: string;
-  parserInit: typeof import("@swc/wasm-web/wasm-web.js");
+  parserInit: any;
   byteRepresentation: StringAsBytes;
 }): Promise<ColorInformation[] | null> {
   const text = textDocument.getText();

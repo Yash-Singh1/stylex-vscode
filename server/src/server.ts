@@ -12,18 +12,18 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const wasmBuffer = readFileSync(
-  join(__dirname, "../node_modules/@swc/wasm-web/wasm-web_bg.wasm"),
+  join(__dirname, "../node_modules/@swc/wasm-web/wasm_bg.wasm"),
 );
 
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { defaultSettings, type UserConfiguration } from "./lib/settings";
-import { getByteRepresentation } from "./lib/string-bytes";
-import ServerState from "./lib/server-state";
+import onColorPresentation from "./capabilities/color-presentation";
 import onCompletion from "./capabilities/completions";
 import onDocumentColor from "./capabilities/document-colors";
-import onColorPresentation from "./capabilities/color-presentation";
 import onHover from "./capabilities/hover";
+import ServerState from "./lib/server-state";
+import { defaultSettings, type UserConfiguration } from "./lib/settings";
+import { getByteRepresentation } from "./lib/string-bytes";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -40,7 +40,7 @@ let hasWorkspaceFolderCapability = false;
 // Wrap server in async functions to allow "top-level await"
 (async function () {
   // Import swc and initialize the WASM module
-  const init = await import("@swc/wasm-web/wasm-web.js");
+  const init = await import("@swc/wasm-web/wasm.js");
   await init.default(wasmBuffer);
 
   connection.onInitialize((params: InitializeParams) => {
