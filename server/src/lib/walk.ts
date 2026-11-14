@@ -67,6 +67,14 @@ import type {
 } from "@swc/types";
 import type { CancellationToken } from "vscode-languageserver";
 
+// SWC emits this node, but @swc/types does not yet include it.
+type UsingDeclaration = {
+  type: "UsingDeclaration";
+  span: VariableDeclarator["span"];
+  isAwait: boolean;
+  decls: VariableDeclarator[];
+};
+
 export type NodeType =
   | Module
   | ModuleItem
@@ -110,6 +118,7 @@ export type NodeType =
   | Param
   | TsParameterProperty
   | Decorator
+  | UsingDeclaration
   | VariableDeclarator
   | OptionalChainingCall
   | Super
@@ -177,6 +186,7 @@ const visitorKeyMap: {
     "implements",
   ],
   VariableDeclaration: ["declarations"],
+  UsingDeclaration: ["decls"],
   VariableDeclarator: ["init", "id"],
   Identifier: [],
   OptionalChainingExpression: ["base"],
