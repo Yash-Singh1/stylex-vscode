@@ -1,9 +1,51 @@
 import { expect, describe } from "vitest";
 import { States, walk } from "../../src/lib/walk";
+import { parse } from "../../src/lib/parser";
 import { testParser } from "../helpers/parseSetup";
-import { type CancellationToken } from "vscode-languageserver";
+import { CancellationToken } from "vscode-languageserver";
 
 describe("walk", () => {
+  for (const declaration of ["using", "await using"]) {
+    testParser(
+      `walks every declarator and initializer in ${declaration}`,
+      async ({ parser }) => {
+        const ast = await parse({
+          source: `${declaration} first = open("red"), second = open("blue");
+const after = "green";`,
+          languageId: "typescript",
+          parser,
+          token: CancellationToken.None,
+        });
+        const declarations: string[] = [];
+        const strings: string[] = [];
+
+        await walk(
+          ast,
+          {
+            VariableDeclarator(node, _state, parent) {
+              if (node.id.type === "Identifier") {
+                declarations.push(node.id.value);
+              }
+              expect(parent?.type).toBe(
+                node.id.type === "Identifier" && node.id.value === "after"
+                  ? "VariableDeclaration"
+                  : "UsingDeclaration",
+              );
+            },
+            StringLiteral(node) {
+              strings.push(node.value);
+            },
+          },
+          CancellationToken.None,
+          {},
+        );
+
+        expect(declarations).toEqual(["first", "second", "after"]);
+        expect(strings).toEqual(["red", "blue", "green"]);
+      },
+    );
+  }
+
   testParser("walks a simple expression", async ({ parser }) => {
     const ast = await parser.parse("1 + 2");
     await walk(
